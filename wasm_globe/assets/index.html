@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en-US">
+
+<head>
+	<meta charset="utf-8" />
+	<title>WASM Dune Globe</title>
+	<style>
+		canvas {
+			display: block;
+			margin: auto;
+			width: 100%;
+			max-width: 48rem;
+			image-rendering: -moz-crisp-edges;
+			image-rendering: -webkit-crisp-edges;
+			image-rendering: pixelated;
+			aspect-ratio: 4 / 3;
+		}
+	</style>
+	<script type="module">
+		import init, { GlobeRenderer } from "./pkg/wasm_dune_globe_$hash.js";
+
+		await init();
+
+		const WIDTH = 320;
+		const HEIGHT = 200;
+
+		const canvas = document.querySelector('canvas');
+		canvas.width = WIDTH;
+		canvas.height = HEIGHT;
+
+		const globe_renderer = new GlobeRenderer(canvas);
+
+		canvas.addEventListener('mousedown', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const x = e.offsetX * WIDTH / canvas.offsetWidth;
+			const y = e.offsetY * HEIGHT / canvas.offsetHeight;
+			globe_renderer.click(x, y);
+		});
+	</script>
+</head>
+
+<body>
+	<canvas id="globe"></canvas>
+</body>
+
+</html>

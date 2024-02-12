@@ -1,0 +1,15 @@
+[package]
+name = "globe_renderer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+framebuffer = { path = "../framebuffer" }
+bytes_ext = { path = "../bytes_ext" }
+sprite = { path = "../sprite" }
+
+[[bin]]
+name = "draw_globe"
+path = "src/bin/draw_globe.rs"
