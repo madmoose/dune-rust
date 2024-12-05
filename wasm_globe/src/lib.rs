@@ -1,4 +1,4 @@
-#![feature(lazy_cell)]
+#![allow(clippy::identity_op)]
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -57,6 +57,7 @@ struct GlobeRendererInner {
     renderer: globe_renderer::GlobeRenderer,
     canvas: HtmlCanvasElement,
     buffer: Vec<u8>,
+    image: Vec<u8>,
     rotation: f32,
     tilt: f32,
     rotation_target: f32,
@@ -82,12 +83,14 @@ fn smallest(a: f32, b: f32) -> f32 {
 impl GlobeRendererInner {
     pub fn new(canvas: HtmlCanvasElement) -> Rc<RefCell<GlobeRendererInner>> {
         let renderer = globe_renderer::GlobeRenderer::new(GLOBDATA, MAP, TABLAT);
-        let buffer = vec![0; 4 * 320 * 200];
+        let buffer = vec![0; 320 * 200];
+        let image = vec![0; 4 * 320 * 200];
 
         let r = Rc::new(RefCell::new(GlobeRendererInner {
             renderer,
             canvas,
             buffer,
+            image,
             rotation: 0.0,
             tilt: 0.0,
             rotation_target: 0.0,
@@ -192,15 +195,20 @@ impl GlobeRendererInner {
     }
 
     pub fn draw(&mut self) -> Result<(), JsValue> {
-        let mut fb =
-            Framebuffer::new_with_pixel_data(320, 200, &mut self.buffer, PAL.try_into().unwrap());
+        let mut framebuffer = Framebuffer::new_with_pixel_data(320, 200, &mut self.buffer);
+        for i in 0..256 {
+            let r = ((PAL[3 * i + 0] as u32) * 63 / 255) as u8;
+            let g = ((PAL[3 * i + 1] as u32) * 63 / 255) as u8;
+            let b = ((PAL[3 * i + 2] as u32) * 63 / 255) as u8;
+            framebuffer.mut_pal().set(i, (r, g, b));
+        }
 
-        fb.clear();
+        framebuffer.clear();
 
-        Self::draw_background(&mut fb);
-        Self::draw_head(&mut fb, 10);
+        Self::draw_background(&mut framebuffer);
+        Self::draw_head(&mut framebuffer, 10);
         self.renderer
-            .draw(&mut fb, self.rotation as u16, self.tilt as i16);
+            .draw(&mut framebuffer, self.rotation as u16, self.tilt as i16);
 
         let context_options = serde_wasm_bindgen::to_value(&serde_json::json!({
             "premultipliedAlpha": false,
@@ -214,8 +222,19 @@ impl GlobeRendererInner {
             .unwrap()
             .dyn_into::<CanvasRenderingContext2d>()?;
 
+        for y in 0..200 {
+            for x in 0..320 {
+                let rgb = framebuffer.get_rgb(x, y);
+
+                self.image[4 * (y * 320 + x) + 0] = rgb.0;
+                self.image[4 * (y * 320 + x) + 1] = rgb.1;
+                self.image[4 * (y * 320 + x) + 2] = rgb.2;
+                self.image[4 * (y * 320 + x) + 3] = 255;
+            }
+        }
+
         let image_data =
-            ImageData::new_with_u8_clamped_array_and_sh(Clamped(fb.as_slice()), 320, 200)
+            ImageData::new_with_u8_clamped_array_and_sh(Clamped(self.image.as_slice()), 320, 200)
                 .expect("Failed to create ImageData");
 
         context.put_image_data(&image_data, 0.0, 0.0).unwrap();

@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+
+members = [
+	"blit",
+	"bytes_ext", "draw_room",
+	"framebuffer",
+	"globe_renderer",
+	"room_renderer",
+	"sprite",
+	"wasm_globe",
+	"wasm_room",
+]

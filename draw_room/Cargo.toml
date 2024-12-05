@@ -1,0 +1,9 @@
+[package]
+name = "draw_room"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+framebuffer = { path = "../framebuffer" }
+room_renderer = { path = "../room_renderer" }
+sprite = { path = "../sprite" }

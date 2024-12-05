@@ -1,5 +1,5 @@
 [package]
-name = "wasm_globe"
+name = "wasm_room"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 [dependencies]
 framebuffer = { path = "../framebuffer" }
 bytes_ext = { path = "../bytes_ext" }
-globe_renderer = { path = "../globe_renderer" }
+room_renderer = { path = "../room_renderer" }
 sprite = { path = "../sprite" }
 js-sys = "0.3.64"
 serde-wasm-bindgen = "0.6.0"
@@ -29,3 +29,4 @@ web-sys = {version="0.3.64", features=[
     "Response",
     "Window",
 ]}
+serde = "1.0.215"

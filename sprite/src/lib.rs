@@ -1,6 +1,13 @@
 #![allow(clippy::identity_op)]
-#![feature(cursor_remaining)]
+#![feature(cursor_split)]
+
 use std::io::{self, Cursor};
+
+mod sprite;
+mod sprite_sheet;
+
+pub use sprite::Sprite;
+pub use sprite_sheet::SpriteSheet;
 
 use bytes_ext::ReadBytesExt;
 use framebuffer::Framebuffer;
@@ -33,7 +40,7 @@ pub fn draw_sprite_from_sprite_sheet(
 
     src.set_position(toc_position + sprite_offset);
 
-    draw_sprite(dst, src.remaining_slice(), x, y)?;
+    draw_sprite(dst, src.split().1, x, y)?;
 
     Ok(())
 }
@@ -57,14 +64,14 @@ fn draw_sprite(dst: &mut Framebuffer, src: &[u8], x: usize, y: usize) -> std::io
 
     if pal_offset < 254 {
         if !is_rle_compressed {
-            draw_4bpp(dst, src.remaining_slice(), x, y, width, height, pal_offset)?;
+            draw_4bpp(dst, src.split().1, x, y, width, height, pal_offset)?;
         } else {
-            draw_4bpp_rle(dst, src.remaining_slice(), x, y, width, height, pal_offset)?;
+            draw_4bpp_rle(dst, src.split().1, x, y, width, height, pal_offset)?;
         }
     } else if !is_rle_compressed {
-        draw_8bpp(dst, src.remaining_slice(), x, y, width, height, pal_offset)?;
+        draw_8bpp(dst, src.split().1, x, y, width, height, pal_offset)?;
     } else {
-        draw_8bpp_rle(dst, src.remaining_slice(), x, y, width, height, pal_offset)?;
+        draw_8bpp_rle(dst, src.split().1, x, y, width, height, pal_offset)?;
     }
 
     Ok(())

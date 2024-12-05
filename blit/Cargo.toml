@@ -1,11 +1,10 @@
 [package]
-name = "sprite"
+name = "blit"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-blit = { path = "../blit" }
 bytes_ext = { path = "../bytes_ext" }
 framebuffer = { path = "../framebuffer" }

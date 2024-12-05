@@ -128,7 +128,8 @@ impl GlobeRenderer {
         let center_x = 160 - 1;
         let center_y = 80 - 1;
 
-        let mut y: i32 = 0;
+        let mut y = 0;
+
         let mut globdata_reader = Cursor::new(&self.globdata);
 
         loop {
@@ -178,6 +179,7 @@ impl GlobeRenderer {
                 bp += bx;
                 dx += ax;
 
+                // Draw left half
                 let color = self.map_color(bp);
                 let py = match half {
                     Half::Upper => center_y - y,
@@ -191,6 +193,7 @@ impl GlobeRenderer {
                 }
                 bp += bx;
 
+                // Draw right half
                 let color = self.map_color(bp);
                 let py = match half {
                     Half::Upper => center_y - y,
