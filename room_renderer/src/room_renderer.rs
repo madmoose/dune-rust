@@ -1,7 +1,7 @@
 use std::{io::Cursor, mem::swap};
 
 use bytes_ext::ReadBytesExt;
-use framebuffer::{Framebuffer, IndexMap};
+use framebuffer::{Framebuffer, IndexMap, Palette};
 use sprite::SpriteSheet;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 pub struct RoomRenderer {
     room: Option<Room>,
     sprite_sheet: Option<SpriteSheet>,
-    y_offset: usize,
+    y_offset: i16,
 }
 
 pub struct DrawOptions {
@@ -56,24 +56,29 @@ impl RoomRenderer {
         &self,
         room: &Room,
         sprite_sheet: &SpriteSheet,
-        options: &DrawOptions,
+        pal: &Palette,
         frame: &mut Framebuffer,
-    ) {
+    ) -> Result<(), std::io::Error> {
         for (i, part) in room.parts().iter().enumerate() {
-            if self.draw_part(i, part, sprite_sheet, options, frame, &mut None) {
-                let filename = format!("room-part-{i:02}-pal.h");
-                frame.write_pal_as_header(&filename).unwrap();
+            self.draw_part(i, part, sprite_sheet, frame, &mut None)?;
 
-                let filename = format!("room-part-{i:02}.ppm");
-                frame.write_ppm_scaled(&filename, 5, 6).unwrap();
-            }
+            let filename = format!("room-part-{i:02}.ppm");
+            frame.write_ppm_scaled(pal, &filename, 5, 6)?;
         }
+
+        Ok(())
     }
 
-    pub fn draw_sky(&self, sky_asset: &[u8], sky_palette: usize, frame: &mut Framebuffer) {
+    pub fn draw_sky(
+        &self,
+        sky_asset: &[u8],
+        sky_palette_index: usize,
+        pal: &mut Palette,
+        // frame: &mut Framebuffer,
+    ) {
         let mut c = Cursor::new(sky_asset);
         let toc_pos = c.read_le_u16().unwrap() as u64;
-        c.set_position(toc_pos + (8 + sky_palette.min(32) as u64) * 2);
+        c.set_position(toc_pos + (8 + sky_palette_index.min(32) as u64) * 2);
         let sub_ofs = c.read_le_u16().unwrap() as u64;
         c.set_position(toc_pos + sub_ofs + 6);
 
@@ -84,7 +89,7 @@ impl RoomRenderer {
             let g = c.read_u8().unwrap();
             let b = c.read_u8().unwrap();
 
-            frame.mut_pal().set(pal_ofs + i, (r, g, b));
+            pal.set(pal_ofs + i, (r, g, b));
         }
 
         // let sky_sprite_sheet = SpriteSheet::new(sky_asset).unwrap();
@@ -106,22 +111,30 @@ impl RoomRenderer {
         options: &DrawOptions,
         frame: &mut Framebuffer,
         index_map: &mut Option<IndexMap>,
-    ) -> usize {
+    ) -> Result<(), std::io::Error> {
         let Some(room) = &self.room else {
-            return 0;
+            return Ok(());
         };
         let Some(sprite_sheet) = &self.sprite_sheet else {
-            return 0;
+            return Ok(());
         };
 
-        let mut parts_drawn = 0;
         for (i, part) in room.parts().iter().enumerate() {
-            if self.draw_part(i, part, sprite_sheet, options, frame, index_map) {
-                parts_drawn += 1;
+            if Self::should_draw(options, part) {
+                self.draw_part(i, part, sprite_sheet, frame, index_map)?;
             }
         }
 
-        parts_drawn
+        Ok(())
+    }
+
+    fn should_draw(options: &DrawOptions, part: &Part) -> bool {
+        match part {
+            Part::Sprite(_) => options.draw_sprites,
+            Part::Character(_) => true,
+            Part::Polygon(_) => options.draw_polygons,
+            Part::Line(_) => options.draw_lines,
+        }
     }
 
     fn draw_part(
@@ -129,47 +142,42 @@ impl RoomRenderer {
         index: usize,
         part: &Part,
         sprite_sheet: &SpriteSheet,
-        options: &DrawOptions,
-        frame: &mut Framebuffer<'_>,
+        frame: &mut Framebuffer,
         index_map: &mut Option<IndexMap>,
-    ) -> bool {
+    ) -> Result<(), std::io::Error> {
         match part {
             Part::Sprite(sprite_part) => {
-                if !options.draw_sprites {
-                    return false;
-                }
                 let Some(sprite) = sprite_sheet.get_sprite(sprite_part.id as usize) else {
-                    return false;
+                    return Ok(());
                 };
 
-                sprite
-                    .draw(
-                        index,
-                        sprite_part.x as usize,
-                        sprite_part.y as usize + self.y_offset,
-                        sprite_part.flip_x,
-                        sprite_part.flip_y,
-                        sprite_part.scale,
-                        sprite_part.pal_offset,
-                        frame,
-                        index_map,
-                    )
-                    .unwrap();
-                true
-            }
-            Part::Character(_) => false,
-            Part::Polygon(polygon_part) => {
-                if !options.draw_polygons {
-                    return false;
-                }
+                sprite::DrawBuilder::new(sprite, frame)
+                    .at(sprite_part.x as i16, sprite_part.y as i16 + self.y_offset)
+                    .flip_x(sprite_part.flip_x)
+                    .flip_y(sprite_part.flip_y)
+                    .scale(sprite_part.scale)
+                    .pal_offset(sprite_part.pal_offset)
+                    .index(index)
+                    // .opt_index_map(index_map)
+                    .draw()?;
 
+                // sprite.draw_with_options(
+                //     index,
+                //     sprite_part.x as usize,
+                //     sprite_part.y as usize + self.y_offset,
+                //     sprite_part.flip_x,
+                //     sprite_part.flip_y,
+                //     sprite_part.scale,
+                //     sprite_part.pal_offset,
+                //     frame,
+                //     index_map,
+                // )?;
+            }
+            Part::Character(_) => {}
+            Part::Polygon(polygon_part) => {
                 self.draw_polygon(index, polygon_part, frame, index_map);
-                true
             }
             Part::Line(line_part) => {
-                if !options.draw_lines {
-                    return false;
-                }
                 self.draw_line(
                     index,
                     line_part.p0,
@@ -179,9 +187,9 @@ impl RoomRenderer {
                     frame,
                     index_map,
                 );
-                true
             }
         }
+        Ok(())
     }
 
     fn draw_line(
@@ -199,7 +207,7 @@ impl RoomRenderer {
         bresenham_line(p0, p1, |x, y| {
             dither = dither.rotate_left(1);
             if dither & 1 != 0 {
-                let y = y + self.y_offset;
+                let y = y + self.y_offset as usize;
                 frame.put_pixel(x, y, color);
                 if let Some(m) = index_map.as_mut() {
                     m.set_index(x, y, index)
@@ -260,7 +268,7 @@ impl RoomRenderer {
                     (x0 + (x1 - x)) as usize
                 };
 
-                let y = y + start_p.1 as usize + self.y_offset;
+                let y = y + start_p.1 as usize + self.y_offset as usize;
 
                 frame.put_pixel(x, y, (rand + (color >> 8) - 1) as u8);
                 if let Some(index_map) = index_map.as_mut() {

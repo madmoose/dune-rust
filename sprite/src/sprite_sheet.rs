@@ -1,17 +1,24 @@
-use std::io::{Cursor, Seek};
+use std::io::Cursor;
 
 use bytes_ext::ReadBytesExt;
-use framebuffer::Pal;
+use dune::Rect;
+use framebuffer::{Framebuffer, Palette};
 
 use crate::sprite::Sprite;
 
+enum SpriteOrData {
+    Sprite(Sprite),
+    Data(Vec<u8>),
+}
+
 pub struct SpriteSheet {
     pal_update: Option<Vec<u8>>,
-    sprites: Vec<Sprite>,
+    resource_count: usize,
+    sprites: Vec<SpriteOrData>,
 }
 
 impl SpriteSheet {
-    pub fn new(data: &[u8]) -> Result<Self, std::io::Error> {
+    pub fn from_slice(data: &[u8]) -> Result<Self, std::io::Error> {
         let size = data.len();
 
         let toc_pos = u16::from_le_bytes(data[0..2].try_into().unwrap()) as usize;
@@ -38,52 +45,83 @@ impl SpriteSheet {
 
         let mut sprites = Vec::new();
 
+        let resource_count = offsets.len();
         for offset in offsets {
             let (ofs, size) = offset;
-            sprites.push(Sprite::new_from_slice(&data[ofs..ofs + size]));
+            let slice = &data[ofs..ofs + size];
+            if let Some(sprite) = Sprite::from_slice(slice) {
+                sprites.push(SpriteOrData::Sprite(sprite));
+            } else {
+                sprites.push(SpriteOrData::Data(slice.to_vec()));
+            }
         }
 
         Ok(SpriteSheet {
             pal_update,
+            resource_count,
             sprites,
         })
     }
 
-    pub fn apply_palette_update(&self, pal: &mut Pal) -> Result<(), std::io::Error> {
-        let Some(pal_update) = &self.pal_update else {
+    pub fn apply_palette_update(&self, pal: &mut Palette) -> Result<(), std::io::Error> {
+        let Some(data) = &self.pal_update else {
             return Ok(());
         };
 
-        let mut r = Cursor::new(pal_update);
-
-        loop {
-            let index = r.read_u8()? as usize;
-            let mut count = r.read_u8()? as usize;
-
-            if index == 1 && count == 0 {
-                r.seek_relative(3)?;
-                continue;
-            }
-            if index == 0xff && count == 0xff {
-                break;
-            }
-            if count == 0 {
-                count = 256;
-            }
-
-            for i in 0..count {
-                let cr = r.read_u8()?;
-                let cg = r.read_u8()?;
-                let cb = r.read_u8()?;
-
-                pal.set(index + i, (cr, cg, cb));
-            }
-        }
+        pal.apply_palette_update(data)?;
 
         Ok(())
     }
 
+    pub fn resource_count(&self) -> usize {
+        self.resource_count
+    }
+
     pub fn get_sprite(&self, id: usize) -> Option<&Sprite> {
-        self.sprites.get(id)
+        match self.sprites.get(id) {
+            Some(SpriteOrData::Sprite(sprite)) => Some(sprite),
+            Some(_) => None,
+            None => None,
+        }
+    }
+
+    pub fn get_resource(&self, id: usize) -> Option<&[u8]> {
+        match self.sprites.get(id) {
+            Some(SpriteOrData::Data(data)) => Some(data),
+            Some(_) => None,
+            None => None,
+        }
+    }
+
+    pub fn draw_sprite(&self, id: usize, x: i16, y: i16, framebuffer: &mut Framebuffer) {
+        self.get_sprite(id)
+            .unwrap()
+            .draw(x, y, framebuffer)
+            .unwrap();
+    }
+
+    pub fn draw_sprite_clipped(
+        &self,
+        id: usize,
+        x: i16,
+        y: i16,
+        clip_rect: Rect,
+        framebuffer: &mut Framebuffer,
+    ) {
+        let sprite = self.get_sprite(id).unwrap();
+        sprite
+            .draw_with_options(
+                id,
+                x,
+                y,
+                clip_rect,
+                false,
+                false,
+                0,
+                0,
+                framebuffer,
+                &mut None,
+            )
+            .unwrap();
     }
 }

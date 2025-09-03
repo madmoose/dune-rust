@@ -7,25 +7,13 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-framebuffer = { path = "../framebuffer" }
-bytes_ext = { path = "../bytes_ext" }
-globe_renderer = { path = "../globe_renderer" }
-sprite = { path = "../sprite" }
-js-sys = "0.3.64"
-serde-wasm-bindgen = "0.6.0"
-serde_json = "1.0.107"
-wasm-bindgen = "0.2.87"
-wasm-bindgen-futures = "0.4.37"
-web-sys = {version="0.3.64", features=[
-	"console",
-    "CanvasRenderingContext2d",
-    "Document",
-    "HtmlCanvasElement",
-    "HtmlInputElement",
-    "ImageData",
-    "InputEvent",
-    "MouseEvent",
-    "Performance",
-    "Response",
-    "Window",
-]}
+framebuffer = { workspace = true }
+bytes_ext = { workspace = true }
+globe_renderer = { workspace = true }
+sprite = { workspace = true }
+js-sys = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = ["console", "CanvasRenderingContext2d", "Document", "HtmlCanvasElement", "HtmlInputElement", "ImageData", "InputEvent", "MouseEvent", "Performance", "Response", "Window"] }

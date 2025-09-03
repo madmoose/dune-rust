@@ -1,0 +1,9 @@
+[package]
+name = "draw_hnm"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytes_ext = { workspace = true }
+dune = { workspace = true }
+framebuffer = { workspace = true }

@@ -1,0 +1,10 @@
+[package]
+name = "draw_sprite"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytes_ext = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+framebuffer = { workspace = true }
+sprite = { workspace = true }

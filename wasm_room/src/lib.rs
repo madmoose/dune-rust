@@ -2,12 +2,12 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use framebuffer::{Framebuffer, IndexMap};
+use framebuffer::{Framebuffer, IndexMap, Palette};
 use room_renderer::{DrawOptions, Room, RoomSheet};
 use serde::Deserialize;
 use sprite::SpriteSheet;
 use wasm_bindgen::{prelude::*, Clamped};
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
+use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 static ROOMS_SIET: &[u8] = include_bytes!("../../assets/SIET.SAL");
 static ROOMS_PALACE: &[u8] = include_bytes!("../../assets/PALACE.SAL");
@@ -95,7 +95,6 @@ struct RoomRendererInner {
     room_sheet: Option<RoomSheet>,
     room_index: usize,
     canvas: HtmlCanvasElement,
-    buffer: Vec<u8>,
     image: Vec<u8>,
     index_map: Option<IndexMap>,
 }
@@ -104,7 +103,6 @@ impl RoomRendererInner {
     pub fn new(canvas: HtmlCanvasElement) -> Rc<RefCell<RoomRendererInner>> {
         let room_renderer = room_renderer::RoomRenderer::new();
 
-        let buffer = vec![0; 320 * 200];
         let image = vec![0; 4 * 320 * 200];
         let index_map = Some(IndexMap::new());
 
@@ -113,7 +111,6 @@ impl RoomRendererInner {
             room_sheet: None,
             room_index: 0,
             canvas,
-            buffer,
             image,
             index_map,
         }))
@@ -154,24 +151,26 @@ impl RoomRendererInner {
     }
 
     fn draw(&mut self, options: RoomRendererDrawOptions) -> Result<(), JsValue> {
-        let mut frame = Framebuffer::new_with_pixel_data(320, 200, &mut self.buffer);
+        let mut pal = Palette::new();
+        let mut frame = Framebuffer::new(320, 200);
         frame.clear();
 
         if let Some(index_map) = self.index_map.as_mut() {
             index_map.clear();
         }
 
-        if let Some(sky_palette) = options.sky_palette {
-            self.room_renderer.draw_sky(SKYDN, sky_palette, &mut frame);
+        if let Some(sky_palette_index) = options.sky_palette {
+            self.room_renderer
+                .draw_sky(SKYDN, sky_palette_index, &mut pal);
         }
 
         let Some(sprite_sheet) = self.room_renderer.get_sprite_sheet() else {
             return Ok(());
         };
 
-        sprite_sheet.apply_palette_update(frame.mut_pal()).unwrap();
+        sprite_sheet.apply_palette_update(&mut pal).unwrap();
 
-        self.room_renderer.draw(
+        let res = self.room_renderer.draw(
             &DrawOptions {
                 draw_sprites: options.draw_sprites,
                 draw_polygons: options.draw_polygons,
@@ -180,6 +179,10 @@ impl RoomRendererInner {
             &mut frame,
             &mut self.index_map,
         );
+        if let Err(error) = res {
+            console::error_1(&format!("{error:#?}").into());
+            return Ok(());
+        }
 
         let context_options = serde_wasm_bindgen::to_value(&serde_json::json!({
             "premultipliedAlpha": false,
@@ -195,7 +198,8 @@ impl RoomRendererInner {
 
         for y in 0..200 {
             for x in 0..320 {
-                let mut rgb = frame.get_rgb(x, y);
+                let c = frame.get_pixel(x, y);
+                let mut rgb = pal.get_scaled(c as usize);
 
                 if let Some(highlighted_index) = options.highlighted_index {
                     if self.index_map.as_ref().is_some_and(|index_map| {
@@ -260,5 +264,5 @@ fn sprite_sheet_by_name(sprite_sheet: &str) -> Option<SpriteSheet> {
         _ => SPRITE_SHEET_POR,
     };
 
-    SpriteSheet::new(sprite_sheet_data).ok()
+    SpriteSheet::from_slice(sprite_sheet_data).ok()
 }

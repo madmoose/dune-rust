@@ -1,13 +1,39 @@
 [workspace]
 resolver = "2"
-
 members = [
-	"blit",
-	"bytes_ext", "draw_room",
+	"bytes_ext",
+	"draw_hnm",
+	"draw_night_attack",
+	"draw_room",
+	"draw_sprite",
+	"dune",
 	"framebuffer",
 	"globe_renderer",
+	"lipsync",
 	"room_renderer",
 	"sprite",
 	"wasm_globe",
+	"wasm_lipsync",
 	"wasm_room",
+	"wasm_video",
 ]
+
+[workspace.dependencies]
+dune = { path = "dune" }
+bytes_ext = { path = "bytes_ext" }
+clap = "4.5.38"
+cpal = "0.15.3"
+framebuffer = { path = "framebuffer" }
+globe_renderer = { path = "globe_renderer" }
+js-sys = "0.3.64"
+lipsync = { path = "lipsync" }
+num = "0.4.3"
+png = "0.17.14"
+room_renderer = { path = "room_renderer" }
+serde = "1.0.219"
+serde_json = "1.0.107"
+serde-wasm-bindgen = "0.6.0"
+sprite = { path = "sprite" }
+wasm-bindgen = "0.2.87"
+wasm-bindgen-futures = "0.4.37"
+web-sys = "0.3.64"

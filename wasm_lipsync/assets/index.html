@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en-US">
+
+<head>
+	<meta charset="utf-8" />
+	<title>WASM Dune Portraits</title>
+	<style>
+		body {
+			background-color: #bbb;
+		}
+
+		canvas {
+			display: block;
+			margin: auto;
+			width: 100%;
+			max-width: 32rem;
+			image-rendering: -moz-crisp-edges;
+			image-rendering: -webkit-crisp-edges;
+			image-rendering: pixelated;
+			aspect-ratio: 4 / 3;
+		}
+
+		#controls {
+			margin: auto;
+			width: 100%;
+			max-width: 64rem;
+		}
+
+		#controls .portrait button {
+			margin: 0 5px 5px 0;
+		}
+	</style>
+	<script type="module">
+		import init, { PortraitRenderer, beep } from "./pkg/wasm_dune_lipsync_$hash.js";
+
+		await init();
+		// debugger;
+
+		let handle = null;
+		const play_button = document.getElementById("play");
+		play_button.addEventListener("click", event => {
+			handle = beep();
+		});
+		const play_button2 = document.getElementById("play2");
+		play_button.addEventListener("click", event => {
+			handle = beep();
+		});
+		const stop_button = document.getElementById("stop");
+		stop_button.addEventListener("click", event => {
+			if (handle != null) {
+				handle.free();
+				handle = null;
+			}
+		});
+
+		const WIDTH = 320;
+		const HEIGHT = 200;
+
+		const canvas = document.querySelector('canvas');
+		canvas.width = WIDTH;
+		canvas.height = HEIGHT;
+
+		const lipsync_renderer = new PortraitRenderer(canvas);
+
+		window.lipsync_renderer = lipsync_renderer;
+		window.beep = beep;
+
+		function play_animation(e) {
+			console.log(this.dataset.portrait, this.dataset.animation)
+			lipsync_renderer.play_portrait_animation(this.dataset.portrait, this.dataset.animation);
+		}
+
+		const controls_el = document.getElementById('controls');
+		const portrait_information = lipsync_renderer.get_media_information();
+		console.log(portrait_information)
+		for (const portrait_index in portrait_information) {
+			const portrait = portrait_information[portrait_index];
+
+			let row = document.createElement('div');
+			row.classList.add('portrait')
+			for (let animation_index = 0; animation_index != portrait.animation_count; animation_index += 1) {
+				let play_button = document.createElement('button');
+				play_button.appendChild(document.createTextNode(`Play ${portrait.name} ${animation_index + 1}`));
+				play_button.dataset.portrait = portrait_index;
+				play_button.dataset.animation = animation_index;
+				play_button.addEventListener('click', play_animation);
+				row.appendChild(play_button);
+			}
+			controls_el.appendChild(row);
+		}
+	</script>
+</head>
+
+<body>
+	<button id="play">Play</button>
+	<button id="play2">Play 2</button>
+	<button id="stop">Stop</button>
+	<canvas></canvas>
+	<div id="controls"></div>
+</body>
+
+</html>

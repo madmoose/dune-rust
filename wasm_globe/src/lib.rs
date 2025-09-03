@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use framebuffer::Framebuffer;
+use framebuffer::{Framebuffer, Palette};
 use wasm_bindgen::{prelude::*, Clamped};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
@@ -56,7 +56,6 @@ impl GlobeRenderer {
 struct GlobeRendererInner {
     renderer: globe_renderer::GlobeRenderer,
     canvas: HtmlCanvasElement,
-    buffer: Vec<u8>,
     image: Vec<u8>,
     rotation: f32,
     tilt: f32,
@@ -68,8 +67,8 @@ struct GlobeRendererInner {
 
 struct UIIcon {
     pub sprite_index: u16,
-    pub x: usize,
-    pub y: usize,
+    pub x: i16,
+    pub y: i16,
 }
 
 fn smallest(a: f32, b: f32) -> f32 {
@@ -83,13 +82,11 @@ fn smallest(a: f32, b: f32) -> f32 {
 impl GlobeRendererInner {
     pub fn new(canvas: HtmlCanvasElement) -> Rc<RefCell<GlobeRendererInner>> {
         let renderer = globe_renderer::GlobeRenderer::new(GLOBDATA, MAP, TABLAT);
-        let buffer = vec![0; 320 * 200];
         let image = vec![0; 4 * 320 * 200];
 
         let r = Rc::new(RefCell::new(GlobeRendererInner {
             renderer,
             canvas,
-            buffer,
             image,
             rotation: 0.0,
             tilt: 0.0,
@@ -195,12 +192,14 @@ impl GlobeRendererInner {
     }
 
     pub fn draw(&mut self) -> Result<(), JsValue> {
-        let mut framebuffer = Framebuffer::new_with_pixel_data(320, 200, &mut self.buffer);
+        let mut pal = Palette::new();
+        let mut framebuffer = Framebuffer::new(320, 200);
+
         for i in 0..256 {
             let r = ((PAL[3 * i + 0] as u32) * 63 / 255) as u8;
             let g = ((PAL[3 * i + 1] as u32) * 63 / 255) as u8;
             let b = ((PAL[3 * i + 2] as u32) * 63 / 255) as u8;
-            framebuffer.mut_pal().set(i, (r, g, b));
+            pal.set(i, (r, g, b));
         }
 
         framebuffer.clear();
@@ -224,7 +223,8 @@ impl GlobeRendererInner {
 
         for y in 0..200 {
             for x in 0..320 {
-                let rgb = framebuffer.get_rgb(x, y);
+                let c = framebuffer.get_pixel(x, y);
+                let rgb = pal.get_scaled(c as usize);
 
                 self.image[4 * (y * 320 + x) + 0] = rgb.0;
                 self.image[4 * (y * 320 + x) + 1] = rgb.1;

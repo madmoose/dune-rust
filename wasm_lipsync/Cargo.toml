@@ -1,0 +1,33 @@
+[package]
+name = "wasm_lipsync"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bytes_ext = { workspace = true }
+framebuffer = { workspace = true }
+lipsync = { workspace = true }
+sprite = { workspace = true }
+js-sys = { workspace = true }
+serde_json = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = [
+	"console",
+	"CanvasRenderingContext2d",
+	"Document",
+	"HtmlCanvasElement",
+	"HtmlInputElement",
+	"ImageData",
+	"InputEvent",
+	"MouseEvent",
+	"Performance",
+	"Response",
+	"Window"
+] }
+serde = { workspace = true, features = ["derive"] }
+cpal = { workspace = true, features = ["wasm-bindgen"] }

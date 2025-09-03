@@ -5,12 +5,36 @@ use std::io::Cursor;
 use bytes_ext::{ReadBytesExt, WriteBytesExt};
 use framebuffer::{Framebuffer, IndexMap};
 
+use crate::Rect;
+
 pub fn draw(
     index: usize,
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+    clip_rect: Rect,
+    pal_offset: u8,
+    data: &[u8],
+    frame: &mut Framebuffer,
+    index_map: &mut Option<IndexMap>,
+) -> std::io::Result<()> {
+    assert!(width < i16::MAX as u16);
+    assert!(height < i16::MAX as u16);
+
+    draw_with_options(
+        index, x, y, width, height, clip_rect, false, false, false, 0, pal_offset, data, frame,
+        index_map,
+    )
+}
+
+pub fn draw_with_options(
+    index: usize,
+    x: i16,
+    y: i16,
+    width: u16,
+    height: u16,
+    clip_rect: Rect,
     rle: bool,
     flip_x: bool,
     flip_y: bool,
@@ -20,6 +44,20 @@ pub fn draw(
     frame: &mut Framebuffer,
     index_map: &mut Option<IndexMap>,
 ) -> std::io::Result<()> {
+    assert!(width > 0);
+    assert!(width < i16::MAX as u16);
+    assert!(height > 0);
+    assert!(height < i16::MAX as u16);
+
+    println!("x: {}, y: {}, w: {}, h: {}", x, y, width, height);
+
+    let clip_rect = clip_rect.clip(&Rect {
+        x0: 0,
+        y0: 0,
+        x1: 320,
+        y1: 200,
+    });
+
     let bpp = if pal_offset >= 254 { 8 } else { 4 };
     let pitch = pitch(bpp, width);
 
@@ -31,13 +69,13 @@ pub fn draw(
         if rle {
             let data = unrle(data, pitch, height)?;
             draw_4bpp_scaled(
-                &data, frame, x, y, width, height, flip_x, flip_y, scale, pal_offset, index,
-                index_map,
+                &data, frame, x, y, width, height, clip_rect, flip_x, flip_y, scale, pal_offset,
+                index, index_map,
             );
         } else {
             draw_4bpp_scaled(
-                data, frame, x, y, width, height, flip_x, flip_y, scale, pal_offset, index,
-                index_map,
+                data, frame, x, y, width, height, clip_rect, flip_x, flip_y, scale, pal_offset,
+                index, index_map,
             );
         }
         return Ok(());
@@ -47,21 +85,25 @@ pub fn draw(
         if rle {
             let data = unrle(data, pitch, height)?;
             draw_8bpp(
-                &data, frame, x, y, width, height, flip_x, flip_y, pal_offset, index, index_map,
+                &data, frame, x, y, width, height, clip_rect, flip_x, flip_y, pal_offset, index,
+                index_map,
             );
         } else {
             draw_8bpp(
-                data, frame, x, y, width, height, flip_x, flip_y, pal_offset, index, index_map,
+                data, frame, x, y, width, height, clip_rect, flip_x, flip_y, pal_offset, index,
+                index_map,
             );
         }
     } else if rle {
         let data = unrle(data, pitch, height)?;
         draw_4bpp(
-            &data, frame, x, y, width, height, flip_x, flip_y, pal_offset, index, index_map,
+            &data, frame, x, y, width, height, clip_rect, flip_x, flip_y, pal_offset, index,
+            index_map,
         );
     } else {
         draw_4bpp(
-            data, frame, x, y, width, height, flip_x, flip_y, pal_offset, index, index_map,
+            data, frame, x, y, width, height, clip_rect, flip_x, flip_y, pal_offset, index,
+            index_map,
         );
     }
     Ok(())
@@ -70,10 +112,11 @@ pub fn draw(
 fn draw_4bpp_scaled(
     src: &[u8],
     frame: &mut Framebuffer,
-    dst_x: usize,
-    dst_y: usize,
-    width: usize,
-    height: usize,
+    dst_x: i16,
+    dst_y: i16,
+    width: u16,
+    height: u16,
+    clip_rect: Rect,
     flip_x: bool,
     flip_y: bool,
     scale: u8,
@@ -84,7 +127,7 @@ fn draw_4bpp_scaled(
     let pitch = pitch(4, width);
 
     let scale_factors: [u16; 8] = [0x100, 0x120, 0x140, 0x160, 0x180, 0x1C0, 0x200, 0x280];
-    let scale_factor_fp = scale_factors[scale as usize] as usize;
+    let scale_factor_fp = scale_factors[scale as usize];
 
     let dst_w = (width << 8) / scale_factor_fp;
     let dst_h = (height << 8) / scale_factor_fp;
@@ -96,7 +139,8 @@ fn draw_4bpp_scaled(
             let src_x = src_x_fp >> 8;
             let src_y = src_y_fp >> 8;
 
-            let mut c = src[src_y * pitch + src_x / 2];
+            let src_offset = src_y * pitch + src_x / 2;
+            let mut c = src[src_offset as usize];
             if src_x & 1 == 0 {
                 c &= 0xf;
             } else {
@@ -104,12 +148,16 @@ fn draw_4bpp_scaled(
             }
 
             if c != 0 {
-                let x = dst_x + if flip_x { dst_w - x - 1 } else { x };
-                let y = dst_y + if flip_y { dst_h - y - 1 } else { y };
+                let x = dst_x.saturating_add_unsigned(if flip_x { dst_w - x - 1 } else { x });
+                let y = dst_y.saturating_add_unsigned(if flip_y { dst_h - y - 1 } else { y });
 
-                frame.put_pixel(x, y, c + pal_offset);
+                if !clip_rect.in_rect(x, y) {
+                    continue;
+                }
+
+                frame.put_pixel(x as usize, y as usize, c + pal_offset);
                 if let Some(index_map) = index_map {
-                    index_map.set_index(x, y, index)
+                    index_map.set_index(x as usize, y as usize, index)
                 }
             }
             src_x_fp += scale_factor_fp;
@@ -121,10 +169,11 @@ fn draw_4bpp_scaled(
 fn draw_4bpp(
     src: &[u8],
     frame: &mut Framebuffer,
-    dst_x: usize,
-    dst_y: usize,
-    width: usize,
-    height: usize,
+    dst_x: i16,
+    dst_y: i16,
+    width: u16,
+    height: u16,
+    clip_rect: Rect,
     flip_x: bool,
     flip_y: bool,
     pal_offset: u8,
@@ -135,7 +184,8 @@ fn draw_4bpp(
 
     for y in 0..height {
         for x in 0..width {
-            let mut c = src[y * pitch + x / 2];
+            let src_offset = y * pitch + x / 2;
+            let mut c = src[src_offset as usize];
             if x & 1 == 0 {
                 c &= 0xf;
             } else {
@@ -143,12 +193,16 @@ fn draw_4bpp(
             }
 
             if c != 0 {
-                let x = dst_x + if flip_x { width - x - 1 } else { x };
-                let y = dst_y + if flip_y { height - y - 1 } else { y };
+                let x = dst_x.saturating_add_unsigned(if flip_x { width - x - 1 } else { x });
+                let y = dst_y.saturating_add_unsigned(if flip_y { height - y - 1 } else { y });
 
-                frame.put_pixel(x, y, c + pal_offset);
+                if !clip_rect.in_rect(x, y) {
+                    continue;
+                }
+
+                frame.put_pixel(x as usize, y as usize, c + pal_offset);
                 if let Some(index_map) = index_map {
-                    index_map.set_index(x, y, index);
+                    index_map.set_index(x as usize, y as usize, index);
                 }
             }
         }
@@ -158,10 +212,11 @@ fn draw_4bpp(
 fn draw_8bpp(
     src: &[u8],
     frame: &mut Framebuffer,
-    dst_x: usize,
-    dst_y: usize,
-    width: usize,
-    height: usize,
+    dst_x: i16,
+    dst_y: i16,
+    width: u16,
+    height: u16,
+    clip_rect: Rect,
     flip_x: bool,
     flip_y: bool,
     mode: u8,
@@ -170,20 +225,29 @@ fn draw_8bpp(
 ) {
     for y in 0..height {
         for x in 0..width {
-            let c = src[y * width + x];
+            let src_offset = y * width + x;
+            let c = src[src_offset as usize];
             if mode != 255 || c != 0 {
-                let x = dst_x + if flip_x { width - x - 1 } else { x };
-                let y = dst_y + if flip_y { height - y - 1 } else { y };
-                frame.put_pixel(x, y, c);
+                let x = dst_x.saturating_add_unsigned(if flip_x { width - x - 1 } else { x });
+                let y = dst_y.saturating_add_unsigned(if flip_y { height - y - 1 } else { y });
+
+                if !clip_rect.in_rect(x, y) {
+                    continue;
+                }
+
+                frame.put_pixel(x as usize, y as usize, c);
                 if let Some(index_map) = index_map {
-                    index_map.set_index(x, y, index)
+                    index_map.set_index(x as usize, y as usize, index)
                 }
             }
         }
     }
 }
 
-fn unrle(data: &[u8], pitch: usize, height: usize) -> std::io::Result<Vec<u8>> {
+fn unrle(data: &[u8], pitch: u16, height: u16) -> std::io::Result<Vec<u8>> {
+    let pitch = pitch as usize;
+    let height = height as usize;
+
     let mut buf = vec![0u8; height * pitch];
 
     let mut rle_src = Cursor::new(data);
@@ -215,10 +279,11 @@ fn unrle(data: &[u8], pitch: usize, height: usize) -> std::io::Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn pitch(bpp: u8, width: usize) -> usize {
+fn pitch(bpp: u8, width: u16) -> u16 {
+    assert!(width > 0);
     if bpp == 8 {
         width
     } else {
-        2 * ((width + 3) / 4)
+        2 * width.div_ceil(4)
     }
 }

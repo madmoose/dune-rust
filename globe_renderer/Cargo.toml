@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-framebuffer = { path = "../framebuffer" }
-bytes_ext = { path = "../bytes_ext" }
-sprite = { path = "../sprite" }
+framebuffer = { workspace = true }
+bytes_ext = { workspace = true }
+sprite = { workspace = true }
 
 [[bin]]
 name = "draw_globe"

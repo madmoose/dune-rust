@@ -5,3 +5,5 @@
 /.zed
 /Cargo.lock
 /target
+/assets/*
+notes.txt
