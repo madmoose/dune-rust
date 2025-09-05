@@ -1,0 +1,8 @@
+[package]
+name = "draw_night_attack"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+dune = { workspace = true }
+num = { workspace = true }

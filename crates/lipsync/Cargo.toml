@@ -1,0 +1,10 @@
+[package]
+name = "lipsync"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+bytes_ext = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+dune = { workspace = true }
+room_renderer = { workspace = true }

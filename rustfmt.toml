@@ -1,0 +1,9 @@
+# Group imports into sections: std, external crates, and internal (crate/super/self)
+group_imports = "StdExternalCrate"
+# Within each group, order alphabetically
+reorder_imports = true
+# Reorder module declarations (mod ...) alphabetically
+reorder_modules = true
+# If you like to merge multiple imports into a single nested use,
+# e.g. `use std::{fmt, collections::HashMap};`
+imports_granularity = "Crate"

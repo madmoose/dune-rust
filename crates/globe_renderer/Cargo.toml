@@ -1,0 +1,12 @@
+[package]
+name = "globe_renderer"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+bytes_ext = { workspace = true }
+dune = { workspace = true }
+
+[[bin]]
+name = "draw_globe"
+path = "src/bin/draw_globe.rs"

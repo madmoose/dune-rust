@@ -1,9 +1,12 @@
 .DS_Store
 *.png
 *.ppm
+/.claude
 /.vscode
 /.zed
-/Cargo.lock
-/target
 /assets/*
-notes.txt
+/assets/*
+/Cargo.lock
+/crates/globe_renderer/assets/
+/target
+output

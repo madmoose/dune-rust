@@ -1,0 +1,8 @@
+[package]
+name = "dune"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+bytes_ext = { workspace = true }
+png = { workspace = true }
