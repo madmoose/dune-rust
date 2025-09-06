@@ -388,16 +388,9 @@ impl<'a> GameState<'a> {
 
         ax &= 0x10;
         if ax == 0 {
-            let bx_masked: usize = (bl & 6) as usize;
-
-            let si = self.word_20a52[bx_masked >> 1];
-
-            let bx_doubled = bx_masked * 2;
-
-            ax += bx_doubled as u16;
-
-            ax = (ax & 0xFF00) | (((ax & 0xFF) + 4) & 0xFF);
-
+            let index = (bl & 6) >> 1; // bit 1+2 is the index
+            let si = self.word_20a52[index as usize]; // subtype
+            ax = (index as u16 + 1) * 4; // sprite_id
             self.spawn_particle_final(ax, di, si);
         } else {
             let mut al = bl;
