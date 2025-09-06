@@ -117,13 +117,13 @@ fn main() {
         pal_5bf: Palette::new(),
         screen_pal,
         sprite_sheet,
-        word_2316e_particle_count: 0,
-        unk_23170_particles: [Particle::default(); MAX_PARTICLES],
+        particle_count: 0,
+        particles: [Particle::default(); MAX_PARTICLES],
         byte_1f59a: 0,
         word_1f4b0_rand_bits: 0x7302,
         particle_origins: [(125, 101), (100, 101), (239, 122), (271, 125)],
         // from seg001:15a2
-        word_20a52: [0xfa04, 0xfc06, 0xfcfa, 0xfafc],
+        particle_subtypes: [0xfa04, 0xfc06, 0xfcfa, 0xfafc],
         byte_23b9b: 0,
         byte_23bea: 0,
         word_23c4e: 0,
@@ -185,10 +185,10 @@ pub struct GameState<'a> {
     sprite_sheet: SpriteSheet,
     word_1f4b0_rand_bits: u16,
     byte_1f59a: i8,
-    particle_origins: [(i16, i16); 4], // word_20a42
-    word_20a52: [u16; 4],
-    word_2316e_particle_count: u16,
-    unk_23170_particles: [Particle; MAX_PARTICLES],
+    particle_origins: [(i16, i16); 4],    // word_20a42
+    particle_subtypes: [u16; 4],          // word_20a52
+    particle_count: u16,                  // word_2316e
+    particles: [Particle; MAX_PARTICLES], // unk_23170
     byte_23b9b: u8,
     byte_23bea: u8,
     word_23c4e: u16,
@@ -199,7 +199,7 @@ pub struct GameState<'a> {
 
 impl<'a> GameState<'a> {
     fn particle(&mut self, index: u16) -> &mut Particle {
-        &mut self.unk_23170_particles[index as usize]
+        &mut self.particles[index as usize]
     }
 
     fn sub_1e3b7_rand_masked(&mut self, mask: u16) -> u16 {
@@ -274,7 +274,7 @@ impl<'a> GameState<'a> {
             self.sub_10c3b();
         }
 
-        let particle_count = self.word_2316e_particle_count;
+        let particle_count = self.particle_count;
         if particle_count == 0 {
             return;
         }
@@ -389,7 +389,7 @@ impl<'a> GameState<'a> {
         ax &= 0x10;
         if ax == 0 {
             let index = (bl & 6) >> 1; // bit 1+2 is the index
-            let subtype = self.word_20a52[index as usize]; // subtype
+            let subtype = self.particle_subtypes[index as usize]; // subtype
             let sprite_id = (index as u16 + 1) * 4; // sprite_id
             self.spawn_particle_final(sprite_id, di, subtype);
         } else {
@@ -495,9 +495,9 @@ impl<'a> GameState<'a> {
             .sub_1c60b_particles_spawn_particle(sprite_id, x, y, subtype)
             .is_some()
         {
-            let last_particle_idx = (self.word_2316e_particle_count - 1) as usize;
-            self.unk_23170_particles[last_particle_idx].data0 = 0;
-            self.unk_23170_particles[last_particle_idx].data1 = 0;
+            let last_particle_idx = (self.particle_count - 1) as usize;
+            self.particles[last_particle_idx].data0 = 0;
+            self.particles[last_particle_idx].data1 = 0;
         }
     }
 
@@ -623,35 +623,27 @@ impl<'a> GameState<'a> {
 
         self.sub_1c202(sprite_id, &mut x0, &mut y0);
 
-        self.unk_23170_particles[self.word_2316e_particle_count as usize]
-            .rect
-            .x0 = x0;
+        self.particles[self.particle_count as usize].rect.x0 = x0;
 
-        self.unk_23170_particles[self.word_2316e_particle_count as usize]
-            .rect
-            .y0 = y0;
+        self.particles[self.particle_count as usize].rect.y0 = y0;
 
-        self.unk_23170_particles[self.word_2316e_particle_count as usize].sprite_id = sprite_id;
+        self.particles[self.particle_count as usize].sprite_id = sprite_id;
 
-        self.unk_23170_particles[self.word_2316e_particle_count as usize].subtype = subtype;
+        self.particles[self.particle_count as usize].subtype = subtype;
 
-        self.unk_23170_particles[self.word_2316e_particle_count as usize].flags = 0;
+        self.particles[self.particle_count as usize].flags = 0;
 
         let sprite = self.sprite_sheet.get_sprite(sprite_id).unwrap();
 
         let width = sprite.width();
         let height = sprite.height();
 
-        self.unk_23170_particles[self.word_2316e_particle_count as usize]
-            .rect
-            .x1 = x0.saturating_add_unsigned(width);
-        self.unk_23170_particles[self.word_2316e_particle_count as usize]
-            .rect
-            .y1 = y0.saturating_add_unsigned(height);
+        self.particles[self.particle_count as usize].rect.x1 = x0.saturating_add_unsigned(width);
+        self.particles[self.particle_count as usize].rect.y1 = y0.saturating_add_unsigned(height);
 
-        self.word_2316e_particle_count += 1;
+        self.particle_count += 1;
 
-        Some(&mut self.unk_23170_particles[self.word_2316e_particle_count as usize])
+        Some(&mut self.particles[self.particle_count as usize])
     }
 
     fn sub_1c661(&mut self, dx: i16, bx: i16, particle_index: u16) {
@@ -659,38 +651,30 @@ impl<'a> GameState<'a> {
 
         self.sub_1c13b_open_onmap_resource();
 
-        let mut temp_rect = self.unk_23170_particles[particle_index].rect;
+        let mut temp_rect = self.particles[particle_index].rect;
 
-        self.unk_23170_particles[particle_index].rect.x0 = self.unk_23170_particles[particle_index]
-            .rect
-            .x0
-            .wrapping_add(dx);
+        self.particles[particle_index].rect.x0 =
+            self.particles[particle_index].rect.x0.wrapping_add(dx);
 
-        self.unk_23170_particles[particle_index].rect.y0 = self.unk_23170_particles[particle_index]
-            .rect
-            .y0
-            .wrapping_add(bx);
+        self.particles[particle_index].rect.y0 =
+            self.particles[particle_index].rect.y0.wrapping_add(bx);
 
-        self.unk_23170_particles[particle_index].rect.x1 = self.unk_23170_particles[particle_index]
-            .rect
-            .x1
-            .wrapping_add(dx);
+        self.particles[particle_index].rect.x1 =
+            self.particles[particle_index].rect.x1.wrapping_add(dx);
 
-        self.unk_23170_particles[particle_index].rect.y1 = self.unk_23170_particles[particle_index]
-            .rect
-            .y1
-            .wrapping_add(bx);
+        self.particles[particle_index].rect.y1 =
+            self.particles[particle_index].rect.y1.wrapping_add(bx);
 
         if dx >= 0 {
-            temp_rect.x1 = self.unk_23170_particles[particle_index].rect.x1;
+            temp_rect.x1 = self.particles[particle_index].rect.x1;
         } else {
-            temp_rect.x0 = self.unk_23170_particles[particle_index].rect.x0;
+            temp_rect.x0 = self.particles[particle_index].rect.x0;
         }
 
         if bx >= 0 {
-            temp_rect.y1 = self.unk_23170_particles[particle_index].rect.y1;
+            temp_rect.y1 = self.particles[particle_index].rect.y1;
         } else {
-            temp_rect.y0 = self.unk_23170_particles[particle_index].rect.y0;
+            temp_rect.y0 = self.particles[particle_index].rect.y0;
         }
 
         self.sub_1c6ad_particles_update_dirty_rect(&temp_rect);
@@ -701,18 +685,18 @@ impl<'a> GameState<'a> {
     fn sub_1c58a_particles_remove_particle(&mut self, index: u16) {
         self.sub_1c13b_open_onmap_resource();
 
-        if self.word_2316e_particle_count != 0 && index < self.word_2316e_particle_count {
-            self.unk_23170_particles[index as usize].flags |= 0x80;
-            let rect = self.unk_23170_particles[index as usize].rect;
+        if self.particle_count != 0 && index < self.particle_count {
+            self.particles[index as usize].flags |= 0x80;
+            let rect = self.particles[index as usize].rect;
             self.sub_1c6ad_particles_update_dirty_rect(&rect);
 
-            if index < self.word_2316e_particle_count - 1 {
-                for i in index..self.word_2316e_particle_count - 1 {
-                    self.unk_23170_particles[i as usize] = self.unk_23170_particles[i as usize + 1];
+            if index < self.particle_count - 1 {
+                for i in index..self.particle_count - 1 {
+                    self.particles[i as usize] = self.particles[i as usize + 1];
                 }
             }
 
-            self.word_2316e_particle_count -= 1;
+            self.particle_count -= 1;
 
             // for i in 0..2 {
             //     if false {
@@ -754,8 +738,8 @@ impl<'a> GameState<'a> {
             }
         }
 
-        for i in 0..self.word_2316e_particle_count {
-            let particle = &self.unk_23170_particles[i as usize];
+        for i in 0..self.particle_count {
+            let particle = &self.particles[i as usize];
             if particle.flags & 0x80 != 0 {
                 continue;
             }
