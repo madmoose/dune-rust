@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use bytes_ext::ReadBytesExt;
 
-use crate::{Palette, sprite::Sprite};
+use crate::{Palette, hsq, sprite::Sprite};
 
 enum SpriteOrData {
     Sprite(Sprite),
@@ -16,6 +16,27 @@ pub struct SpriteSheet {
 }
 
 impl SpriteSheet {
+    pub fn from_possibly_compressed_slice(data: &[u8]) -> Result<Self, std::io::Error> {
+        let mut reader = Cursor::new(data);
+        let header = hsq::Header::from_reader(&mut reader)?;
+
+        if !header.is_compressed() {
+            return SpriteSheet::from_slice(data);
+        }
+
+        if header.compressed_size() as usize != data.len() {
+            println!("Packed length does not match resource size");
+            return SpriteSheet::from_slice(data);
+        }
+
+        let mut unpacked_data = vec![0; header.uncompressed_size() as usize];
+        let mut writer = Cursor::new(&mut unpacked_data);
+
+        hsq::unhsq(reader, &mut writer)?;
+
+        SpriteSheet::from_slice(&unpacked_data)
+    }
+
     pub fn from_slice(data: &[u8]) -> Result<Self, std::io::Error> {
         let size = data.len();
 

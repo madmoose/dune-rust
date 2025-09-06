@@ -1,58 +1,40 @@
-use std::{io::Cursor, process::exit};
+mod countdown_timer;
+
+use std::process::exit;
 
 use dune::{
-    Framebuffer, Palette, Rect, SpriteSheet, draw_sprite, draw_sprite_from_sheet, hsq,
-    sprite_blitter,
+    Framebuffer, Palette, Rect, SpriteSheet, draw_sprite, draw_sprite_from_sheet, sprite_blitter,
 };
 
-static ATTACK_HSQ: &[u8] = include_bytes!("../../../assets/ATTACK.HSQ");
+use crate::countdown_timer::CountdownTimer;
+
 const MAX_PARTICLES: usize = 64;
+const GLOBAL_Y_OFFSET: i16 = 24;
 
-fn read_sprite_sheet(data: &[u8]) -> std::io::Result<SpriteSheet> {
-    let mut reader = Cursor::new(data);
-    let header = hsq::Header::from_reader(&mut reader)?;
-
-    if !header.is_compressed() {
-        return SpriteSheet::from_slice(data);
-    }
-
-    if header.compressed_size() as usize != data.len() {
-        println!("Packed length does not match resource size");
-        return SpriteSheet::from_slice(data);
-    }
-
-    let mut unpacked_data = vec![0; header.uncompressed_size() as usize];
-    let mut writer = Cursor::new(&mut unpacked_data);
-
-    hsq::unhsq(reader, &mut writer)?;
-
-    SpriteSheet::from_slice(&unpacked_data)
-}
+static ATTACK_HSQ: &[u8] = include_bytes!("../../../assets/ATTACK.HSQ");
 
 struct NightAttackData {
-    timer0: i8,  // offset +0
-    timer1: i8,  // offset +1
-    unk2: u8,    // offset +2
-    unk3: u8,    // offset +3
-    timer4: i16, // offset +4 (word)
-    timer6: i8,  // offset +6
-    timer7: u8,  // offset +7
+    timer0: CountdownTimer<i8>,  // offset +0
+    timer1: CountdownTimer<i8>,  // offset +1
+    unk2: u8,                    // offset +2
+    unk3: u8,                    // offset +3
+    timer4: CountdownTimer<i16>, // offset +4 (word)
+    timer6: CountdownTimer<i8>,  // offset +6
+    timer7: CountdownTimer<i8>,  // offset +7
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-struct Particle {
-    rect: Rect,     // offset +0
-    sprite_id: u16, // offset +8
-    subtype: u16,   // offset +10
-    flags: u8,      // offset +12
-    data0: u8,      // offset +13
-    data1: u8,      // offset +14
-    _data2: u8,     // offset +15
-    _data3: u8,     // offset +16
-                    // Total size 17
+pub struct Particle {
+    pub rect: Rect,     // offset +0
+    pub sprite_id: u16, // offset +8
+    pub subtype: u16,   // offset +10
+    pub flags: u8,      // offset +12
+    pub data0: u8,      // offset +13
+    pub data1: u8,      // offset +14
+    pub _data2: u8,     // offset +15
+    pub _data3: u8,     // offset +16
+                        // Total size 17
 }
-
-const GLOBAL_Y_OFFSET: i16 = 24;
 
 trait Words {
     fn hi(&self) -> u16;
@@ -90,7 +72,7 @@ impl WordJoin for (u16, u16) {
 }
 
 fn main() {
-    let sprite_sheet = read_sprite_sheet(ATTACK_HSQ).unwrap();
+    let sprite_sheet = SpriteSheet::from_possibly_compressed_slice(ATTACK_HSQ).unwrap();
 
     let mut pal = Palette::new();
     sprite_sheet.apply_palette_update(&mut pal).unwrap();
@@ -148,13 +130,13 @@ fn main() {
         word_2ccd4_rand_seed: 0x01d2,
         word_2ccd6_rand_seed: 0x0273,
         night_attack_data: NightAttackData {
-            timer0: 0,
-            timer1: 0,
+            timer0: CountdownTimer::new("timer0", 0, 0),
+            timer1: CountdownTimer::new("timer1", 0, 0),
             unk2: 0,
             unk3: 0,
-            timer4: 0,
-            timer6: 0,
-            timer7: 0,
+            timer4: CountdownTimer::new("timer4", 0, 0),
+            timer6: CountdownTimer::new("timer6", 0, 0),
+            timer7: CountdownTimer::new("timer7", 0, 17),
         },
     };
 
@@ -166,14 +148,14 @@ fn main() {
             game_state.word_1f4b0_rand_bits,
             game_state.word_2ccd4_rand_seed,
             game_state.word_2ccd6_rand_seed,
-            game_state.night_attack_data.timer0,
-            game_state.night_attack_data.timer1,
+            game_state.night_attack_data.timer0.get(),
+            game_state.night_attack_data.timer1.get(),
             game_state.night_attack_data.unk2,
             game_state.night_attack_data.unk3,
-            game_state.night_attack_data.timer4 & 0xff,
-            (game_state.night_attack_data.timer4 >> 8) as u8,
-            game_state.night_attack_data.timer6,
-            game_state.night_attack_data.timer7,
+            game_state.night_attack_data.timer4.get() & 0xff,
+            (game_state.night_attack_data.timer4.get() >> 8) as u8,
+            game_state.night_attack_data.timer6.get(),
+            game_state.night_attack_data.timer7.get(),
         );
         game_state.sub_10b45();
 
@@ -242,27 +224,22 @@ impl<'a> GameState<'a> {
     }
 
     fn sub_10b45(&mut self) {
-        self.night_attack_data.timer7 = self.night_attack_data.timer7.wrapping_sub(1);
+        self.night_attack_data.timer7.tick();
 
-        if self.byte_1f59a <= 0 && self.night_attack_data.timer7 <= 16 {
-            self.sub_10d0d(self.night_attack_data.timer7 == 16);
+        if self.byte_1f59a <= 0 && self.night_attack_data.timer7.triggered() {
+            self.sub_10d0d(self.night_attack_data.timer7.get() == 16);
         }
 
         if self.word_23c4e != 0 || self.byte_23b9b != 0 {
             return;
         }
 
-        self.night_attack_data.timer4 = self.night_attack_data.timer4.wrapping_sub(1);
-
-        if self.night_attack_data.timer4 < 0 {
-            self.night_attack_data.timer6 = self.night_attack_data.timer6.wrapping_sub(1);
-
-            if self.night_attack_data.timer6 < 0 {
+        if self.night_attack_data.timer4.tick() {
+            if self.night_attack_data.timer6.tick() {
                 let random_val = self.sub_1e3cc_rand();
 
-                self.night_attack_data.timer6 = (random_val & 0x7F) as i8;
-
-                self.night_attack_data.timer4 = (random_val >> 8) as i16;
+                self.night_attack_data.timer6.set((random_val & 0x7F) as i8);
+                self.night_attack_data.timer4.set((random_val >> 8) as i16);
             } else {
                 let random_val = self.sub_1e3cc_rand();
 
@@ -293,9 +270,7 @@ impl<'a> GameState<'a> {
             }
         }
 
-        self.night_attack_data.timer0 = self.night_attack_data.timer0.wrapping_sub(1);
-
-        if self.night_attack_data.timer0 < 0 {
+        if self.night_attack_data.timer0.tick() {
             self.sub_10c3b();
         }
 
@@ -373,13 +348,12 @@ impl<'a> GameState<'a> {
 
     fn sub_10c3b(&mut self) {
         let mut ax;
-        self.night_attack_data.timer1 = self.night_attack_data.timer1.wrapping_sub(1);
-        if self.night_attack_data.timer1 < 0 {
+        if self.night_attack_data.timer1.tick() {
             if (self.word_1f4b0_rand_bits & 3) == 0 {
-                self.night_attack_data.timer7 = 0x0B;
+                self.night_attack_data.timer7.set(11);
 
                 if (self.word_1f4b0_rand_bits & 0x0C) == 0 {
-                    self.night_attack_data.timer7 = 0x11;
+                    self.night_attack_data.timer7.set(17);
                 }
             }
 
@@ -393,7 +367,9 @@ impl<'a> GameState<'a> {
 
             let masked_random = self.sub_1e3b7_rand_masked(7);
 
-            self.night_attack_data.timer1 = (masked_random & 0xFF) as i8;
+            self.night_attack_data
+                .timer1
+                .set((masked_random & 0xff) as i8);
 
             if (masked_random & 0xFF) >= 4 {
                 cx |= 0x4000; // Set bit 6 in ch
@@ -403,7 +379,7 @@ impl<'a> GameState<'a> {
             self.night_attack_data.unk3 = ((cx >> 8) & 0xFF) as u8;
         }
 
-        self.night_attack_data.timer0 = 8;
+        self.night_attack_data.timer0.set(8);
 
         let mut ax = self.night_attack_data.unk2 as u16;
         let di = ax;
@@ -588,11 +564,11 @@ impl<'a> GameState<'a> {
         if !flag {
             dl -= 1;
 
-            if self.night_attack_data.timer7 != 10 {
+            if self.night_attack_data.timer7.get() != 10 {
                 // self.gfx_vtable_func_39_transition_palette(al, bx, cx, dl);
 
                 for i in 128..128 + 0x1c {
-                    let divisor = self.night_attack_data.timer7.max(1) as i16;
+                    let divisor = self.night_attack_data.timer7.get().max(1) as i16;
 
                     let r = (self.pal_2bf.get(i).0 as i16 - self.pal_5bf.get(i).0 as i16) / divisor
                         + self.pal_5bf.get(i).0 as i16;
