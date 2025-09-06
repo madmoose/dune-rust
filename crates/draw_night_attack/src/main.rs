@@ -205,34 +205,19 @@ impl<'a> GameState<'a> {
             if self.night_attack_data.timer6.tick() {
                 let random_val = self.rand();
 
-                self.night_attack_data.timer6.set((random_val & 0x7F) as i8);
+                self.night_attack_data.timer6.set((random_val & 0x7f) as i8);
                 self.night_attack_data.timer4.set((random_val >> 8) as i16);
             } else {
                 let random_val = self.rand();
 
-                let bx = random_val;
-                let mut dx = random_val;
+                // Generate the x-coordinate from the high bit of the low byte combined with the high byte
+                let x = (((random_val & 0x80) << 1) | (random_val >> 8)) as i16;
+                let y = (random_val & 0x7f) as i16;
 
-                let bx = (bx & 0x7F) as i16;
+                if (0x30..0x60).contains(&y) && x < 320 {
+                    let sprite_id = ((y as u16) & 7) + 28;
 
-                if (bx & 0xFF) >= 0x60 {
-                    // Skip particle spawn
-                } else if (bx & 0xFF) >= 0x30 {
-                    dx = ((dx & 0xFF) << 8) | ((dx >> 8) & 0xFF); // swap bytes
-
-                    let mut dh = (dx >> 8) as u8;
-                    dh = dh.rotate_left(1);
-                    dx = ((dh as u16) << 8) | (dx & 0x00ff);
-
-                    let dx = dx & 0x1FF;
-
-                    let dx = dx as i16;
-
-                    if dx < 320 {
-                        let sprite_id = ((bx as u16) & 7) + 28;
-
-                        self.sub_1c60b_particles_spawn_particle(sprite_id, dx, bx, 0);
-                    }
+                    self.sub_1c60b_particles_spawn_particle(sprite_id, x, y, 0);
                 }
             }
         }
