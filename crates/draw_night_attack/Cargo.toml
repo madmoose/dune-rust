@@ -6,3 +6,4 @@ edition.workspace = true
 [dependencies]
 dune = { workspace = true }
 num = { workspace = true }
+bytes_ext = { workspace = true }

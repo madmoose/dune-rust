@@ -2,6 +2,7 @@ mod countdown_timer;
 
 use std::process::exit;
 
+use bytes_ext::U32Ext;
 use dune::{
     Framebuffer, Palette, Rect, SpriteSheet, draw_sprite, draw_sprite_from_sheet, sprite_blitter,
 };
@@ -34,41 +35,6 @@ pub struct Particle {
     pub _data2: u8,     // offset +15
     pub _data3: u8,     // offset +16
                         // Total size 17
-}
-
-trait Words {
-    fn hi(&self) -> u16;
-    fn lo(&self) -> u16;
-    fn split_words(&self) -> (u16, u16);
-}
-
-impl Words for u32 {
-    /// Returns the high 16 bits as a u16
-    fn hi(&self) -> u16 {
-        (*self >> 16) as u16
-    }
-
-    /// Returns the low 16 bits as a u16
-    fn lo(&self) -> u16 {
-        *self as u16
-    }
-
-    /// Returns both high and low words as a tuple (high, low)
-    fn split_words(&self) -> (u16, u16) {
-        (self.hi(), self.lo())
-    }
-}
-
-trait WordJoin {
-    fn join_words(&self) -> u32;
-}
-
-impl WordJoin for (u16, u16) {
-    /// Combines two u16 values into a u32, with the first element as high word
-    /// and the second element as low word
-    fn join_words(&self) -> u32 {
-        ((self.0 as u32) << 16) | (self.1 as u32)
-    }
 }
 
 fn main() {
@@ -127,8 +93,8 @@ fn main() {
         byte_23b9b: 0,
         byte_23bea: 0,
         word_23c4e: 0,
-        word_2ccd4_rand_seed: 0x01d2,
-        word_2ccd6_rand_seed: 0x0273,
+        rng_seed: 0x01d2,
+        masked_rng_seed: 0x0273,
         night_attack_data: NightAttackData {
             timer0: CountdownTimer::new("timer0", 0, 0),
             timer1: CountdownTimer::new("timer1", 0, 0),
@@ -146,8 +112,8 @@ fn main() {
             "#####+ frame {} [ds:0000]={:04x} [ds:d824]={:04x} [ds:d826]={:04x}            {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x} {:02x}",
             frame_number,
             game_state.word_1f4b0_rand_bits,
-            game_state.word_2ccd4_rand_seed,
-            game_state.word_2ccd6_rand_seed,
+            game_state.rng_seed,
+            game_state.masked_rng_seed,
             game_state.night_attack_data.timer0.get(),
             game_state.night_attack_data.timer1.get(),
             game_state.night_attack_data.unk2,
@@ -192,8 +158,8 @@ pub struct GameState<'a> {
     byte_23b9b: u8,
     byte_23bea: u8,
     word_23c4e: u16,
-    word_2ccd4_rand_seed: u16,
-    word_2ccd6_rand_seed: u16,
+    rng_seed: u16,
+    masked_rng_seed: u16,
     night_attack_data: NightAttackData,
 }
 
@@ -202,25 +168,26 @@ impl<'a> GameState<'a> {
         &mut self.particles[index as usize]
     }
 
-    fn sub_1e3b7_rand_masked(&mut self, mask: u16) -> u16 {
-        let (dx, ax) = (self.word_2ccd4_rand_seed as u32 * 0x0e56d).split_words();
-        let ax = ax.wrapping_add(1);
+    // sub_1e3b7
+    fn rand_masked(&mut self, mask: u16) -> u16 {
+        const LCG_PRIME: u32 = 0x0e56d;
 
-        self.word_2ccd4_rand_seed = ax;
+        let product = (self.rng_seed as u32 * LCG_PRIME).wrapping_add(1);
 
-        let ax = ((dx, ax).join_words() >> 8) as u16;
+        self.rng_seed = product.low_word();
 
-        ax & mask
+        (product >> 8) as u16 & mask
     }
 
-    fn sub_1e3cc_rand(&mut self) -> u16 {
-        let (dx, ax) = (self.word_2ccd6_rand_seed as u32 * 0xcbd1).split_words();
+    // sub_1e3cc
+    fn rand(&mut self) -> u16 {
+        const LCG_PRIME: u32 = 0xcbd1;
 
-        let ax = ax.wrapping_add(1);
+        let product = (self.masked_rng_seed as u32 * LCG_PRIME).wrapping_add(1);
 
-        self.word_2ccd6_rand_seed = ax;
+        self.masked_rng_seed = product.low_word();
 
-        ((dx, ax).join_words() >> 8) as u16
+        (product >> 8) as u16
     }
 
     fn sub_10b45(&mut self) {
@@ -236,12 +203,12 @@ impl<'a> GameState<'a> {
 
         if self.night_attack_data.timer4.tick() {
             if self.night_attack_data.timer6.tick() {
-                let random_val = self.sub_1e3cc_rand();
+                let random_val = self.rand();
 
                 self.night_attack_data.timer6.set((random_val & 0x7F) as i8);
                 self.night_attack_data.timer4.set((random_val >> 8) as i16);
             } else {
-                let random_val = self.sub_1e3cc_rand();
+                let random_val = self.rand();
 
                 let bx = random_val;
                 let mut dx = random_val;
@@ -357,7 +324,7 @@ impl<'a> GameState<'a> {
                 }
             }
 
-            ax = self.sub_1e3cc_rand();
+            ax = self.rand();
 
             if self.byte_23bea != 0 {
                 ax &= 0xFFEF; // Clear bit 4 in al
@@ -365,7 +332,7 @@ impl<'a> GameState<'a> {
 
             let mut cx = ax;
 
-            let masked_random = self.sub_1e3b7_rand_masked(7);
+            let masked_random = self.rand_masked(7);
 
             self.night_attack_data
                 .timer1
