@@ -121,7 +121,7 @@ fn main() {
         unk_23170_particles: [Particle::default(); MAX_PARTICLES],
         byte_1f59a: 0,
         word_1f4b0_rand_bits: 0x7302,
-        word_20a42: [0x7d, 0x65, 0x64, 0x65, 0xef, 0x7a, 0x10f, 0x7d],
+        particle_origins: [(125, 101), (100, 101), (239, 122), (271, 125)],
         // from seg001:15a2
         word_20a52: [0xfa04, 0xfc06, 0xfcfa, 0xfafc],
         byte_23b9b: 0,
@@ -185,7 +185,7 @@ pub struct GameState<'a> {
     sprite_sheet: SpriteSheet,
     word_1f4b0_rand_bits: u16,
     byte_1f59a: i8,
-    word_20a42: [i16; 8],
+    particle_origins: [(i16, i16); 4], // word_20a42
     word_20a52: [u16; 4],
     word_2316e_particle_count: u16,
     unk_23170_particles: [Particle; MAX_PARTICLES],
@@ -389,17 +389,12 @@ impl<'a> GameState<'a> {
         ax &= 0x10;
         if ax == 0 {
             let index = (bl & 6) >> 1; // bit 1+2 is the index
-            let si = self.word_20a52[index as usize]; // subtype
-            ax = (index as u16 + 1) * 4; // sprite_id
-            self.spawn_particle_final(ax, di, si);
+            let subtype = self.word_20a52[index as usize]; // subtype
+            let sprite_id = (index as u16 + 1) * 4; // sprite_id
+            self.spawn_particle_final(sprite_id, di, subtype);
         } else {
-            let mut al = bl;
-            let mut ah = bl;
-
-            let mut ax = ((ah as u16) << 8) | (al as u16);
-            ax &= 0xC03F;
-            al = (ax & 0xFF) as u8;
-            ah = ((ax >> 8) & 0xFF) as u8;
+            let mut al = bl & 0x3f;
+            let mut ah = bl & 0xc0;
 
             if (ah & 0x40) != 0 {
                 self.word_1f4b0_rand_bits = self.word_1f4b0_rand_bits.rotate_left(1);
@@ -491,13 +486,13 @@ impl<'a> GameState<'a> {
         (bx, dx)
     }
 
-    fn spawn_particle_final(&mut self, ax: u16, di: u16, si: u16) {
-        let di_masked = di & 0x0C;
-        let bx = self.word_20a42[((di_masked >> 1) + 1) as usize]; // word array
-        let dx = self.word_20a42[(di_masked >> 1) as usize]; // word array
+    fn spawn_particle_final(&mut self, sprite_id: u16, origin: u16, subtype: u16) {
+        let origin = (origin & 0x0c) >> 2;
+        let x = self.particle_origins[origin as usize].0;
+        let y = self.particle_origins[origin as usize].1;
 
         if self
-            .sub_1c60b_particles_spawn_particle(ax, dx, bx, si)
+            .sub_1c60b_particles_spawn_particle(sprite_id, x, y, subtype)
             .is_some()
         {
             let last_particle_idx = (self.word_2316e_particle_count - 1) as usize;
