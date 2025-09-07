@@ -1,7 +1,7 @@
 use std::{io::Cursor, mem::swap};
 
 use bytes_ext::ReadBytesExt;
-use dune::{Framebuffer, IndexMap, Palette, Point, SpriteSheet, sprite_blitter};
+use dune::{Color, Framebuffer, IndexMap, Palette, Point, SpriteSheet, sprite_blitter};
 
 use crate::{
     Room,
@@ -88,7 +88,7 @@ impl RoomRenderer {
             let g = c.read_u8().unwrap();
             let b = c.read_u8().unwrap();
 
-            pal.set(pal_ofs + i, (r, g, b));
+            pal.set(pal_ofs + i, Color(r, g, b));
         }
 
         // let sky_sprite_sheet = SpriteSheet::new(sky_asset).unwrap();

@@ -1,6 +1,7 @@
 #![feature(cursor_split)]
 #![allow(clippy::identity_op)]
 
+mod color;
 mod framebuffer;
 mod image;
 mod index_map;
@@ -16,6 +17,7 @@ pub mod dat_file;
 pub mod hnm;
 pub mod hsq;
 
+pub use color::Color;
 pub use framebuffer::Framebuffer;
 pub use index_map::IndexMap;
 pub use palette::Palette;

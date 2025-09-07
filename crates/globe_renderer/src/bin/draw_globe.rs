@@ -1,6 +1,6 @@
 #![allow(clippy::identity_op)]
 
-use dune::{Framebuffer, Palette, SpriteSheet, draw_sprite_from_sheet};
+use dune::{Color, Framebuffer, Palette, SpriteSheet, draw_sprite_from_sheet};
 use globe_renderer::GlobeRenderer;
 
 const MAP: &[u8] = include_bytes!("../../assets/MAP.BIN");
@@ -22,7 +22,7 @@ fn main() -> Result<(), std::io::Error> {
         let r = ((PAL[3 * i + 0] as u32) * 63 / 255) as u8;
         let g = ((PAL[3 * i + 1] as u32) * 63 / 255) as u8;
         let b = ((PAL[3 * i + 2] as u32) * 63 / 255) as u8;
-        pal.set(i, (r, g, b));
+        pal.set(i, Color(r, g, b));
     }
     framebuffer.clear();
 

@@ -2,7 +2,7 @@ use std::{fs::read, io::Cursor, path::PathBuf};
 
 use bytes_ext::ReadBytesExt;
 use clap::Parser;
-use dune::{Framebuffer, Palette, SpriteSheet, draw_sprite};
+use dune::{Color, Framebuffer, Palette, SpriteSheet, draw_sprite};
 
 #[derive(Parser, Debug)] // requires `derive` feature
 struct Args {
@@ -76,6 +76,6 @@ fn apply_sky_palette(palette_index: usize, pal: &mut Palette) {
         let g = c.read_u8().unwrap();
         let b = c.read_u8().unwrap();
 
-        pal.set(pal_ofs + i, (r, g, b));
+        pal.set(pal_ofs + i, Color(r, g, b));
     }
 }

@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use dune::{Framebuffer, Palette, SpriteSheet, draw_sprite_from_sheet};
+use dune::{Color, Framebuffer, Palette, SpriteSheet, draw_sprite_from_sheet};
 use wasm_bindgen::{Clamped, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
@@ -201,7 +201,7 @@ impl GlobeRendererInner {
             let r = ((PAL[3 * i + 0] as u32) * 63 / 255) as u8;
             let g = ((PAL[3 * i + 1] as u32) * 63 / 255) as u8;
             let b = ((PAL[3 * i + 2] as u32) * 63 / 255) as u8;
-            pal.set(i, (r, g, b));
+            pal.set(i, Color(r, g, b));
         }
 
         framebuffer.clear();

@@ -1,10 +1,13 @@
+#![allow(clippy::identity_op)]
+
 mod countdown_timer;
 
 use std::process::exit;
 
 use bytes_ext::U32Ext;
 use dune::{
-    Framebuffer, Palette, Rect, SpriteSheet, draw_sprite, draw_sprite_from_sheet, sprite_blitter,
+    Color, Framebuffer, Palette, Rect, SpriteSheet, draw_sprite, draw_sprite_from_sheet,
+    sprite_blitter,
 };
 
 use crate::countdown_timer::CountdownTimer;
@@ -194,7 +197,7 @@ impl<'a> GameState<'a> {
         self.night_attack_data.timer7.tick();
 
         if self.byte_1f59a <= 0 && self.night_attack_data.timer7.triggered() {
-            self.sub_10d0d(self.night_attack_data.timer7.get() == 16);
+            self.sub_10d0d_trigger_sky_palette_flash(self.night_attack_data.timer7.get() == 16);
         }
 
         if self.word_23c4e != 0 || self.byte_23b9b != 0 {
@@ -497,29 +500,25 @@ impl<'a> GameState<'a> {
         core::mem::swap(dl, dh);
     }
 
-    fn sub_10d0d(&mut self, flag: bool) {
+    fn sub_10d0d_trigger_sky_palette_flash(&mut self, flag: bool) {
         // let al = self.night_attack_data.timer7;
         // let bx = 384u16;
         // let cx = 84u16;
-        let mut dl = 55u8;
+        let mut palette_idx = 55u8;
 
         if !flag {
-            dl -= 1;
+            palette_idx -= 1;
 
             if self.night_attack_data.timer7.get() != 10 {
                 // self.gfx_vtable_func_39_transition_palette(al, bx, cx, dl);
 
-                for i in 128..128 + 0x1c {
+                for i in 128..128 + 28 {
                     let divisor = self.night_attack_data.timer7.get().max(1) as i16;
 
-                    let r = (self.pal_2bf.get(i).0 as i16 - self.pal_5bf.get(i).0 as i16) / divisor
-                        + self.pal_5bf.get(i).0 as i16;
-                    let g = (self.pal_2bf.get(i).1 as i16 - self.pal_5bf.get(i).1 as i16) / divisor
-                        + self.pal_5bf.get(i).1 as i16;
-                    let b = (self.pal_2bf.get(i).2 as i16 - self.pal_5bf.get(i).2 as i16) / divisor
-                        + self.pal_5bf.get(i).2 as i16;
+                    let c0 = self.pal_5bf.get(i);
+                    let c1 = self.pal_2bf.get(i);
 
-                    let rgb = (r as u8, g as u8, b as u8);
+                    let rgb = c0.lerp(c1, divisor);
 
                     self.pal_5bf.set(i, rgb);
                     self.screen_pal.set(i, rgb);
@@ -530,24 +529,58 @@ impl<'a> GameState<'a> {
         }
 
         self.sub_1c13b_open_onmap_resource();
-        let ax = dl as u16;
+        // let ax = dl as u16;
 
-        let si = self.sprite_sheet.get_resource(ax).unwrap();
-        let dsdx = &si[6..];
+        fn apply_palette(palette: &mut Palette, data: &[u8]) {
+            assert!(data.len() >= 4);
 
-        for i in 0..28 {
-            let rgb = (dsdx[3 * i], dsdx[3 * i + 1], dsdx[3 * i + 2]);
-            self.pal_5bf.set(128 + i, rgb);
-            self.screen_pal.set(128 + i, rgb);
+            let zeroes = u16::from_le_bytes(data[0..2].try_into().unwrap());
+            let body_len = u16::from_le_bytes(data[2..4].try_into().unwrap()) as usize;
+            assert!(zeroes == 0);
+
+            let body = &data[4..];
+            assert_eq!(body.len(), body_len);
+
+            let offset = body[0] as usize;
+            let entry_count = body[1] as usize;
+            let rgb_values = &body[2..];
+            assert_eq!(rgb_values.len(), 3 * entry_count);
+            assert!(offset + entry_count < 256);
+
+            for i in 0..entry_count {
+                let r = rgb_values[3 * i + 0];
+                let g = rgb_values[3 * i + 1];
+                let b = rgb_values[3 * i + 2];
+                palette.set(offset + i, Color(r, g, b));
+            }
         }
 
-        let si = self.sprite_sheet.get_resource(53).unwrap();
+        let palette = self.sprite_sheet.get_resource(palette_idx as u16).unwrap();
 
-        let dsdx = &si[6..];
+        apply_palette(&mut self.pal_5bf, palette);
+
+        let rgb_values = &palette[6..];
 
         for i in 0..28 {
-            let rgb = (dsdx[3 * i], dsdx[3 * i + 1], dsdx[3 * i + 2]);
-            self.pal_2bf.set(128 + i, rgb);
+            let color = Color(
+                rgb_values[3 * i],
+                rgb_values[3 * i + 1],
+                rgb_values[3 * i + 2],
+            );
+            self.pal_5bf.set(128 + i, color);
+            self.screen_pal.set(128 + i, color);
+        }
+
+        let palette = self.sprite_sheet.get_resource(53).unwrap();
+        let rgb_values = &palette[6..];
+
+        for i in 0..28 {
+            let color = Color(
+                rgb_values[3 * i],
+                rgb_values[3 * i + 1],
+                rgb_values[3 * i + 2],
+            );
+            self.pal_2bf.set(128 + i, color);
         }
     }
 

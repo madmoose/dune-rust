@@ -2,8 +2,10 @@ use std::io::{Cursor, Seek};
 
 use bytes_ext::ReadBytesExt;
 
+use crate::Color;
+
 #[derive(Debug, Clone)]
-pub struct Palette([(u8, u8, u8); 256]);
+pub struct Palette([Color; 256]);
 
 fn scale_6bit_to_8bit(c: u8) -> u8 {
     (255 * (c as u16) / 63) as u8
@@ -11,50 +13,44 @@ fn scale_6bit_to_8bit(c: u8) -> u8 {
 
 impl Palette {
     pub fn new() -> Self {
-        let mut pal = [(0u8, 0u8, 0u8); 256];
-
-        for i in 0..256 {
-            pal[i + 0] = (0, 0, 0);
-        }
-
-        Palette(pal)
+        Self([Color::default(); 256])
     }
 
     pub fn clear(&mut self) {
         for i in 0..256 {
-            self.set(i, (0, 0, 0));
+            self.set(i, Color::default());
         }
     }
 
-    pub fn get(&self, i: usize) -> (u8, u8, u8) {
+    pub fn get(&self, i: usize) -> Color {
         self.0[i]
     }
 
-    pub fn get_rgb888(&self, i: usize) -> (u8, u8, u8) {
+    pub fn get_rgb888(&self, i: usize) -> Color {
         let c = self.0[i];
 
-        (
+        Color(
             scale_6bit_to_8bit(c.0),
             scale_6bit_to_8bit(c.1),
             scale_6bit_to_8bit(c.2),
         )
     }
 
-    pub fn set(&mut self, i: usize, rgb: (u8, u8, u8)) {
+    pub fn set(&mut self, i: usize, rgb: Color) {
         self.0[i] = rgb;
     }
 
     pub fn set_all(&mut self, pal: &[u8; 768]) {
         for i in 0..256 {
-            self.set(i, (pal[3 * i + 0], pal[3 * i + 1], pal[3 * i + 2]))
+            self.set(i, Color(pal[3 * i + 0], pal[3 * i + 1], pal[3 * i + 2]))
         }
     }
 
-    pub fn as_slice(&self) -> &[(u8, u8, u8); 256] {
+    pub fn as_slice(&self) -> &[Color; 256] {
         &self.0
     }
 
-    pub fn as_mut_slice(&mut self) -> &mut [(u8, u8, u8); 256] {
+    pub fn as_mut_slice(&mut self) -> &mut [Color; 256] {
         &mut self.0
     }
 
@@ -83,7 +79,7 @@ impl Palette {
                 let cb = r.read_u8()?;
 
                 if index + i <= 255 {
-                    self.set(index + i, (cr, cg, cb));
+                    self.set(index + i, Color(cr, cg, cb));
                 }
             }
         }

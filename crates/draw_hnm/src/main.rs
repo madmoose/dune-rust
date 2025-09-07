@@ -1,7 +1,7 @@
 use std::{fs::read, io::Cursor};
 
 use bytes_ext::ReadBytesExt;
-use dune::{Framebuffer, Palette, hnm};
+use dune::{Color, Framebuffer, Palette, hnm};
 
 static SKYDN: &[u8] = include_bytes!("../../../assets/SKYDN.BIN");
 
@@ -37,6 +37,6 @@ fn apply_sky_palette(sky_palette: usize, pal: &mut Palette) {
         let g = c.read_u8().unwrap();
         let b = c.read_u8().unwrap();
 
-        pal.set(pal_ofs + i, (r, g, b));
+        pal.set(pal_ofs + i, Color(r, g, b));
     }
 }
