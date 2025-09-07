@@ -102,12 +102,7 @@ fn main() {
                 );
 
                 framebuffer
-                    .write_ppm_scaled(
-                        &pal,
-                        &format!("out/{output_file_stem}-voc-{index:02}.ppm"),
-                        5,
-                        6,
-                    )
+                    .write_ppm_scaled(&pal, &format!("out/{output_file_stem}-voc-{index:02}.ppm"))
                     .unwrap();
                 index += 1;
             }
@@ -122,8 +117,6 @@ fn main() {
                         .write_ppm_scaled(
                             &pal,
                             &format!("out/{output_file_stem}-animation-{i:02}-frame-{j:02}.ppm"),
-                            5,
-                            6,
                         )
                         .unwrap();
                 }

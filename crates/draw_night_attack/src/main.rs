@@ -133,8 +133,6 @@ fn main() {
             .write_ppm_scaled(
                 &game_state.screen_pal,
                 &format!("ppm/night_attack-{frame_number:05}.ppm"),
-                5,
-                6,
             )
             .unwrap();
         frame_number += 1;

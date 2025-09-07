@@ -62,7 +62,7 @@ impl RoomRenderer {
             self.draw_part(i, part, sprite_sheet, frame, None)?;
 
             let filename = format!("room-part-{i:02}.ppm");
-            frame.write_ppm_scaled(pal, &filename, 5, 6)?;
+            frame.write_ppm_scaled(pal, &filename)?;
         }
 
         Ok(())

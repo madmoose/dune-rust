@@ -27,26 +27,23 @@ impl Framebuffer {
         Ok(())
     }
 
-    pub fn write_ppm_scaled(
-        &self,
-        pal: &Palette,
-        filename: &str,
-        scale_x: usize,
-        scale_y: usize,
-    ) -> std::io::Result<()> {
+    pub fn write_ppm_scaled(&self, pal: &Palette, filename: &str) -> std::io::Result<()> {
+        const SCALE_X: usize = 5;
+        const SCALE_Y: usize = 6;
+
         let src_width = self.w as usize;
-        let dst_width = src_width * scale_x;
-        let dst_height = self.h as usize * scale_y;
+        let dst_width = src_width * SCALE_X;
+        let dst_height = self.h as usize * SCALE_Y;
 
         let mut data = Vec::with_capacity(3 * dst_width * dst_height);
 
         for src_y in 0..self.h as usize {
             let src_row = &self.pixels[src_y * src_width..(src_y + 1) * src_width];
 
-            for _ in 0..scale_y {
+            for _ in 0..SCALE_Y {
                 for &pixel in src_row {
                     let rgb = pal.get_rgb888(pixel as usize);
-                    for _ in 0..scale_x {
+                    for _ in 0..SCALE_X {
                         data.push(rgb.0);
                         data.push(rgb.1);
                         data.push(rgb.2);
@@ -81,7 +78,6 @@ impl Framebuffer {
                 rgba_data[4 * (y * expanded_width + x) + 0] = rgb.0;
                 rgba_data[4 * (y * expanded_width + x) + 1] = rgb.1;
                 rgba_data[4 * (y * expanded_width + x) + 2] = rgb.2;
-                // rgba_data[4 * (y * expanded_width + x) + 3] = self.is_set[src_idx] as u8 * 255;
             }
         }
 
