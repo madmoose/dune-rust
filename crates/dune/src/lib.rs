@@ -1,7 +1,9 @@
 #![feature(cursor_split)]
 #![allow(clippy::identity_op)]
 
+pub mod attack;
 mod color;
+mod font;
 mod framebuffer;
 mod image;
 mod index_map;
@@ -18,6 +20,7 @@ pub mod hnm;
 pub mod hsq;
 
 pub use color::Color;
+pub use font::{Font, TextAlign, TextContext, TextSize, TextStyle, draw_text};
 pub use framebuffer::Framebuffer;
 pub use index_map::IndexMap;
 pub use palette::Palette;

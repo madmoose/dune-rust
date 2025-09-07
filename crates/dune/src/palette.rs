@@ -99,6 +99,30 @@ impl Palette {
 
         Ok(r.position())
     }
+
+    pub fn find_closest_color(&self, color: Color) -> u8 {
+        let mut best_index = 0;
+        let mut best_distance = u32::MAX;
+
+        for (i, &c) in self.0.iter().enumerate() {
+            let dr = c.0 as i16 - color.0 as i16;
+            let dg = c.1 as i16 - color.1 as i16;
+            let db = c.2 as i16 - color.2 as i16;
+
+            let distance = (dr * dr + dg * dg + db * db) as u32;
+
+            if distance < best_distance {
+                best_distance = distance;
+                best_index = i;
+            }
+        }
+
+        best_index as u8
+    }
+
+    pub fn copy_from(&mut self, other: &Self) {
+        self.0.copy_from_slice(&other.0);
+    }
 }
 
 impl Default for Palette {

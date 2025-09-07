@@ -5,4 +5,5 @@ edition.workspace = true
 
 [dependencies]
 bytes_ext = { workspace = true }
+num = { workspace = true }
 png = { workspace = true }

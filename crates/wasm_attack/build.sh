@@ -12,4 +12,4 @@ echo Source hash is $hash
 rm -rf output
 mkdir output
 sed "s/\$hash/$hash/g" < assets/index.html > output/index.html
-wasm-pack build --release --out-dir output/pkg --out-name wasm_dune_room_$hash --target web
+wasm-pack build --release --out-dir output/pkg --out-name wasm_dune_attack_$hash --target web

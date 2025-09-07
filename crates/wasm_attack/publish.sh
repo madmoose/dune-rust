@@ -1,2 +1,2 @@
 #!/bin/bash
-rsync -av --delete output/* f:public_html/subdomains/thomas/dune/room/
+rsync -av --delete output/* f:public_html/subdomains/thomas/dune/attack/

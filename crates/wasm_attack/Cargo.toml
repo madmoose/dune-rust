@@ -9,7 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 bytes_ext = { workspace = true }
 dune = { workspace = true }
-room_renderer = { workspace = true }
 js-sys = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 serde_json = { workspace = true }

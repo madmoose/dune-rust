@@ -9,6 +9,7 @@ enum SpriteOrData {
     Data(Vec<u8>),
 }
 
+#[derive(Default)]
 pub struct SpriteSheet {
     pal_update: Option<Vec<u8>>,
     resource_count: u16,
