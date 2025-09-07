@@ -214,8 +214,10 @@ impl<'a> GameState<'a> {
                 let x = (((random_val & 0x80) << 1) | (random_val >> 8)) as i16;
                 let y = (random_val & 0x7f) as i16;
 
-                if (0x30..0x60).contains(&y) && x < 320 {
-                    let sprite_id = ((y as u16) & 7) + 28;
+                if (48..96).contains(&y) && x < 320 {
+                    const FIRST_AIR_BOMB_SPRITE_ID: u16 = 28;
+
+                    let sprite_id = FIRST_AIR_BOMB_SPRITE_ID + ((y as u16) % 8);
 
                     self.sub_1c60b_particles_spawn_particle(sprite_id, x, y, 0);
                 }
