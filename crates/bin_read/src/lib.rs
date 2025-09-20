@@ -19,6 +19,17 @@ impl BinRead for u8 {
     }
 }
 
+// Implementation for i8
+impl BinRead for i8 {
+    fn bin_read<R: std::io::Read + std::io::Seek>(
+        reader: &mut R,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut buf = [0u8; 1];
+        reader.read_exact(&mut buf)?;
+        Ok(buf[0] as i8)
+    }
+}
+
 // Implementation for u16 (little-endian)
 impl BinRead for u16 {
     fn bin_read<R: std::io::Read + std::io::Seek>(
