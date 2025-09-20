@@ -2,9 +2,9 @@ use std::io::Cursor;
 
 use bytes_ext::ReadBytesExt;
 
-use crate::{
-    GaloisNoiseGenerator, Room,
-    room::{Character, Line, Part, Polygon, Sprite},
+use crate::room_renderer::{
+    galois_noise_generator::GaloisNoiseGenerator,
+    room::{Character, Line, Part, Polygon, Room, Sprite},
 };
 
 #[derive(Debug)]

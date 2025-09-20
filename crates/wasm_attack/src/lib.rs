@@ -2,13 +2,13 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use dune::{Framebuffer, Palette, attack::GameState};
+use dune::{Framebuffer, Palette, attack::AttackState};
 use wasm_bindgen::{Clamped, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 #[wasm_bindgen]
 struct AttackRenderer {
-    _inner: Rc<RefCell<AttackRendererInner>>,
+    inner: Rc<RefCell<AttackRendererInner>>,
 }
 
 #[allow(unused)]
@@ -17,13 +17,25 @@ impl AttackRenderer {
     #[wasm_bindgen(constructor)]
     pub fn new(canvas: HtmlCanvasElement) -> AttackRenderer {
         AttackRenderer {
-            _inner: AttackRendererInner::new(canvas),
+            inner: AttackRendererInner::new(canvas),
         }
+    }
+
+    pub fn set_rand_bits(&mut self, seed: u16) {
+        self.inner.borrow_mut().attack.set_rand_bits(seed);
+    }
+
+    pub fn set_rng_seed(&mut self, seed: u16) {
+        self.inner.borrow_mut().attack.set_rng_seed(seed);
+    }
+
+    pub fn set_masked_rng_seed(&mut self, seed: u16) {
+        self.inner.borrow_mut().attack.set_masked_rng_seed(seed);
     }
 }
 
 struct AttackRendererInner {
-    attack: GameState,
+    attack: AttackState,
     canvas: HtmlCanvasElement,
     image: Vec<u8>,
     last_frame_time: Option<f64>,
@@ -35,8 +47,10 @@ impl AttackRendererInner {
     pub fn new(canvas: HtmlCanvasElement) -> Rc<RefCell<AttackRendererInner>> {
         let image = vec![0; 4 * 320 * 200];
 
+        let attack = AttackState::default();
+
         let r = Rc::new(RefCell::new(AttackRendererInner {
-            attack: GameState::default(),
+            attack,
             canvas,
             image,
             last_frame_time: None,

@@ -1,5 +1,4 @@
-use dune::{Framebuffer, Palette, SpriteSheet};
-use room_renderer::{DrawOptions, RoomRenderer, RoomSheet};
+use dune::{DrawOptions, Framebuffer, Palette, RoomRenderer, RoomSheet, SpriteSheet};
 
 static ROOMS_SHEET: &[u8] = include_bytes!("../../../assets/PALACE.SAL");
 static SPRITE_SHEET: &[u8] = include_bytes!("../../../assets/POR.BIN");

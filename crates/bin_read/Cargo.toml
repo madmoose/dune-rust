@@ -1,0 +1,9 @@
+[package]
+name = "bin_read"
+version = "0.0.0"
+edition.workspace = true
+
+[dependencies]
+quote = "1.0.40"
+syn = "2.0.106"
+bin_read_derive = { path = "../bin_read_derive" }

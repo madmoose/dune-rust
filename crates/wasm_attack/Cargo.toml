@@ -28,3 +28,4 @@ web-sys = { workspace = true, features = [
 	"Window"
 ] }
 serde = { workspace = true }
+rand = { workspace = true }

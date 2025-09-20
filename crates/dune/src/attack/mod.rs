@@ -8,8 +8,8 @@ use crate::{
 };
 
 const MAX_PARTICLES: usize = 64;
-const START_POSITIONS: [(i16, i16); 4] = [(125, 101), (100, 101), (239, 122), (271, 125)];
-const SUBTYPES: [u16; 4] = [0xfa04, 0xfc06, 0xfcfa, 0xfafc];
+const INITIAL_POSITIONS: [(i16, i16); 4] = [(125, 101), (100, 101), (239, 122), (271, 125)];
+const INITIAL_VELOCITIES: [(i8, i8); 4] = [(-6, 4), (-4, 6), (-4, -6), (-6, -4)];
 
 pub struct Screen {
     pal: Palette,
@@ -67,18 +67,18 @@ impl Timers {
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Particle {
-    pub rect: Rect,     // offset +0
-    pub sprite_id: u16, // offset +8
-    pub subtype: u16,   // offset +10
-    pub flags: u8,      // offset +12
-    pub data0: u8,      // offset +13
-    pub data1: u8,      // offset +14
-    pub _data2: u8,     // offset +15
-    pub _data3: u8,     // offset +16
-                        // Total size 17
+    pub rect: Rect,         // offset +0
+    pub sprite_id: u16,     // offset +8
+    pub velocity: (i8, i8), // offset +10
+    pub flags: u8,          // offset +12
+    pub data0: u8,          // offset +13
+    pub data1: u8,          // offset +14
+    pub _data2: u8,         // offset +15
+    pub _data3: u8,         // offset +16
+                            // Total size 17
 }
 
-pub struct GameState {
+pub struct AttackState {
     screen: Screen,
     gfx: Graphics,
 
@@ -102,13 +102,13 @@ pub struct GameState {
 
 static ATTACK_HSQ: &[u8] = include_bytes!("../../../../assets/ATTACK.HSQ");
 
-impl Default for GameState {
+impl Default for AttackState {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl GameState {
+impl AttackState {
     pub fn new() -> Self {
         let mut game_state = Self {
             screen: Screen::default(),
@@ -132,6 +132,18 @@ impl GameState {
         game_state.draw_background();
 
         game_state
+    }
+
+    pub fn set_rand_bits(&mut self, seed: u16) {
+        self.word_1f4b0_rand_bits = seed;
+    }
+
+    pub fn set_rng_seed(&mut self, seed: u16) {
+        self.rng_seed = seed;
+    }
+
+    pub fn set_masked_rng_seed(&mut self, seed: u16) {
+        self.masked_rng_seed = seed;
     }
 
     fn load_spritesheet(&mut self) {
@@ -249,7 +261,7 @@ impl GameState {
 
                     let sprite_id = FIRST_AIR_BOMB_SPRITE_ID + ((y as u16) % 8);
 
-                    self.sub_1c60b_particles_spawn_particle(sprite_id, x, y, 0);
+                    self.sub_1c60b_particles_spawn_particle(sprite_id, x, y, (0, 0));
                 }
             }
         }
@@ -268,7 +280,7 @@ impl GameState {
         let mut i: u16 = 0;
         while i < particle_count {
             let mut ax = self.particle(i).sprite_id;
-            let mut dx = self.particle(i).subtype;
+            let mut velocity = self.particle(i).velocity;
 
             if (ax & 0xFF) < 0x14 {
                 ax >>= 2;
@@ -282,15 +294,38 @@ impl GameState {
                 let mut bx =
                     ((self.particle(i).data1 as u16) << 8) | (self.particle(i).data0 as u16);
 
-                self.sub_10cea_word(&mut bx, &mut dx);
+                {
+                    let mut bl = (bx & 0xFF) as i8;
+                    let mut bh = ((bx >> 8) & 0xFF) as i8;
+                    let mut v1 = velocity.1;
+                    let mut v0 = velocity.0;
 
-                self.sub_10cea_word(&mut bx, &mut dx);
+                    println!(
+                        "Before: bl = {:3}, dl = {:3}, bh = {:3}, dh = {:3}",
+                        bl, v1, bh, v0
+                    );
+
+                    println!("L:");
+                    (bl, v1) = self.sub_10cea(bl, v1);
+
+                    println!("H:");
+                    (bh, v0) = self.sub_10cea(bh, v0);
+
+                    println!(
+                        "After:  bl = {:3}, dl = {:3}, bh = {:3}, dh = {:3}\n",
+                        bl, v1, bh, v0
+                    );
+
+                    bx = ((bh as u8 as u16) << 8) | (bl as u8 as u16);
+                    velocity = (v0, v1);
+                }
 
                 self.particle(i).data0 = (bx & 0xFF) as u8;
                 self.particle(i).data1 = ((bx >> 8) & 0xFF) as u8;
-                let randv = self.word_1f4b0_rand_bits;
 
+                let randv = self.word_1f4b0_rand_bits;
                 self.word_1f4b0_rand_bits = randv.rotate_left(3);
+
                 ax = (self.word_1f4b0_rand_bits & 7) + 0x14;
             } else {
                 ax = ax.wrapping_add(1);
@@ -306,10 +341,9 @@ impl GameState {
             // let particle = &mut self._unk_23170_particles[i as usize];
             self.particle(i).sprite_id = ax;
 
-            let bl = ((dx >> 8) & 0xFF) as i8;
+            let bl = velocity.0;
             let bx_extended = bl as i16;
-
-            let dx_extended = (dx & 0xFF) as i8 as i16;
+            let dx_extended = velocity.1 as i16;
 
             self.sub_1c661(dx_extended, bx_extended, i);
 
@@ -371,9 +405,9 @@ impl GameState {
         ax &= 0x10;
         if ax == 0 {
             let index = (bl & 6) >> 1; // bit 1+2 is the index
-            let subtype = SUBTYPES[index as usize]; // subtype
+            let velocity = INITIAL_VELOCITIES[index as usize]; // subtype
             let sprite_id = (index as u16 + 1) * 4; // sprite_id
-            self.spawn_particle_final(sprite_id, di, subtype);
+            self.spawn_particle_final(sprite_id, di, velocity);
         } else {
             let mut al = bl & 0x3f;
             let mut ah = bl & 0xc0;
@@ -413,7 +447,7 @@ impl GameState {
 
             let dl = (dx as u16) & 0x00ff;
             let bl = bx & 0x00ff;
-            let si = (bl << 8) | dl;
+            let si = (bl as i8, dl as i8);
 
             let ax = 0x14;
 
@@ -468,13 +502,13 @@ impl GameState {
         (bx, dx)
     }
 
-    fn spawn_particle_final(&mut self, sprite_id: u16, origin: u16, subtype: u16) {
+    fn spawn_particle_final(&mut self, sprite_id: u16, origin: u16, velocity: (i8, i8)) {
         let origin = (origin & 0x0c) >> 2;
-        let x = START_POSITIONS[origin as usize].0;
-        let y = START_POSITIONS[origin as usize].1;
+        let x = INITIAL_POSITIONS[origin as usize].0;
+        let y = INITIAL_POSITIONS[origin as usize].1;
 
         if self
-            .sub_1c60b_particles_spawn_particle(sprite_id, x, y, subtype)
+            .sub_1c60b_particles_spawn_particle(sprite_id, x, y, velocity)
             .is_some()
         {
             let last_particle_idx = (self.particle_count - 1) as usize;
@@ -483,52 +517,28 @@ impl GameState {
         }
     }
 
-    fn sub_10cea_word(&self, bx: &mut u16, dx: &mut u16) {
-        let mut bl = (*bx & 0xFF) as i8;
-        let mut bh = ((*bx >> 8) & 0xFF) as i8;
-        let mut dl = (*dx & 0xFF) as i8;
-        let mut dh = ((*dx >> 8) & 0xFF) as i8;
+    fn sub_10cea(&self, bl: i8, v: i8) -> (i8, i8) {
+        let al = v.abs();
+        println!("al = {:02x}", al);
+        let sum: u16 = (al + bl) as u8 as u16;
+        println!("sum = {:04x}", sum);
+        let rotated1 = sum.rotate_right(5);
+        println!("rotated1 = {:04x}", rotated1);
 
-        self.sub_10cea(&mut bl, &mut bh, &mut dl, &mut dh);
+        let iter1_bl = (rotated1 >> 11) as i8;
+        println!("rotated1 = {:04x}", rotated1);
+        let mut iter1_dl = rotated1 as i8;
+        println!("iter1_dl = {:04x}", iter1_dl);
 
-        *bx = ((bh as u8 as u16) << 8) | (bl as u8 as u16);
-        *dx = ((dh as u8 as u16) << 8) | (dl as u8 as u16);
-    }
-
-    fn sub_10cea(&self, bl: &mut i8, bh: &mut i8, dl: &mut i8, dh: &mut i8) {
-        let mut al = *dl;
-
-        if al < 0 {
-            al = al.wrapping_neg();
-
-            self.sub_10cf2(bl, bh, dl, dh, al);
-
-            *dh = dh.wrapping_neg();
-        } else {
-            self.sub_10cf2(bl, bh, dl, dh, al);
+        if v < 0 {
+            iter1_dl = -iter1_dl;
         }
-    }
 
-    fn sub_10cf2(&self, bl: &mut i8, bh: &mut i8, dl: &mut i8, dh: &mut i8, mut al: i8) {
-        al = al.wrapping_add(*bl);
-
-        let mut ax = (al as u8) as u16;
-        ax = ax.rotate_right(5);
-
-        let al2 = ax as u8;
-        let ah2 = (ax >> 8) as u8;
-
-        *bl = (ah2 >> 3) as i8;
-        *dl = al2 as i8;
-
-        core::mem::swap(bl, bh);
-        core::mem::swap(dl, dh);
+        // Return final values after both iterations and swaps
+        (iter1_bl, iter1_dl)
     }
 
     fn sub_10d0d_trigger_sky_palette_flash(&mut self, flag: bool) {
-        // let al = self.timers.timer7;
-        // let bx = 384u16;
-        // let cx = 84u16;
         let mut palette_idx = 55u8;
 
         if !flag {
@@ -626,7 +636,7 @@ impl GameState {
         sprite_id: u16,
         center_x: i16,
         center_y: i16,
-        subtype: u16,
+        velocity: (i8, i8),
     ) -> Option<&mut Particle> {
         self.sub_1c13b_open_onmap_resource();
 
@@ -641,7 +651,7 @@ impl GameState {
 
         self.particles[self.particle_count as usize].sprite_id = sprite_id;
 
-        self.particles[self.particle_count as usize].subtype = subtype;
+        self.particles[self.particle_count as usize].velocity = velocity;
 
         self.particles[self.particle_count as usize].flags = 0;
 

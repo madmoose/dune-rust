@@ -1,7 +1,8 @@
 use std::io::Cursor;
 
 use bytes_ext::ReadBytesExt;
-use dune::Framebuffer;
+
+use crate::Framebuffer;
 
 const MAX_TILT: usize = 99;
 

@@ -7,3 +7,4 @@ edition.workspace = true
 bytes_ext = { workspace = true }
 num = { workspace = true }
 png = { workspace = true }
+serde = { workspace = true }

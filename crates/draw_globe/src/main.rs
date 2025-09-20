@@ -1,16 +1,15 @@
 #![allow(clippy::identity_op)]
 
-use dune::{Color, Framebuffer, Palette, SpriteSheet, draw_sprite_from_sheet};
-use globe_renderer::GlobeRenderer;
+use dune::{Color, Framebuffer, GlobeRenderer, Palette, SpriteSheet, draw_sprite_from_sheet};
 
-const MAP: &[u8] = include_bytes!("../../assets/MAP.BIN");
-const GLOBDATA: &[u8] = include_bytes!("../../assets/GLOBDATA.BIN");
-const TABLAT: &[u8] = include_bytes!("../../assets/TABLAT.BIN");
+const MAP: &[u8] = include_bytes!("../assets/MAP.BIN");
+const GLOBDATA: &[u8] = include_bytes!("../assets/GLOBDATA.BIN");
+const TABLAT: &[u8] = include_bytes!("../assets/TABLAT.BIN");
 
-const PAL: &[u8] = include_bytes!("../../assets/PAL.BIN");
+const PAL: &[u8] = include_bytes!("../assets/PAL.BIN");
 
-const FRESK: &[u8] = include_bytes!("../../assets/FRESK.BIN");
-const ICONES: &[u8] = include_bytes!("../../assets/ICONES.BIN");
+const FRESK: &[u8] = include_bytes!("../assets/FRESK.BIN");
+const ICONES: &[u8] = include_bytes!("../assets/ICONES.BIN");
 
 fn main() -> Result<(), std::io::Error> {
     let mut globe_renderer = GlobeRenderer::new(GLOBDATA, MAP, TABLAT);

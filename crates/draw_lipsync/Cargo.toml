@@ -1,9 +1,9 @@
 [package]
-name = "room_renderer"
+name = "lipsync"
 version = "0.0.0"
 edition.workspace = true
 
 [dependencies]
 bytes_ext = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 dune = { workspace = true }
-serde = { workspace = true, features = ["derive"] }

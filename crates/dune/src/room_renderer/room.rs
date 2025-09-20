@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::GaloisNoiseGenerator;
+use crate::room_renderer::galois_noise_generator::GaloisNoiseGenerator;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type")]

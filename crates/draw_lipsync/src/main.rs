@@ -2,8 +2,7 @@ use std::{io::Cursor, path::PathBuf};
 
 use bytes_ext::ReadBytesExt;
 use clap::Parser;
-use dune::{Framebuffer, Palette, SpriteSheet, dat_file::DatFile, hsq};
-use lipsync::Lipsync;
+use dune::{dat_file::DatFile, hsq, Framebuffer, Lipsync, Palette, SpriteSheet};
 
 #[derive(Parser, Debug)]
 struct Args {

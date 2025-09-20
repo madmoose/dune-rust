@@ -3,8 +3,7 @@
 use core::f32;
 use std::{cell::RefCell, rc::Rc};
 
-use dune::{Framebuffer, Palette, SpriteSheet};
-use lipsync::Lipsync;
+use dune::{Framebuffer, Lipsync, Palette, SpriteSheet};
 use serde::Serialize;
 use wasm_bindgen::{Clamped, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, console};

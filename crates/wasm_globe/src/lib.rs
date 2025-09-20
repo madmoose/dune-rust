@@ -54,7 +54,7 @@ impl GlobeRenderer {
 }
 
 struct GlobeRendererInner {
-    renderer: globe_renderer::GlobeRenderer,
+    renderer: dune::GlobeRenderer,
     canvas: HtmlCanvasElement,
     image: Vec<u8>,
     rotation: f32,
@@ -79,7 +79,7 @@ fn smallest(a: f32, b: f32) -> f32 {
 
 impl GlobeRendererInner {
     pub fn new(canvas: HtmlCanvasElement) -> Rc<RefCell<GlobeRendererInner>> {
-        let renderer = globe_renderer::GlobeRenderer::new(GLOBDATA, MAP, TABLAT);
+        let renderer = dune::GlobeRenderer::new(GLOBDATA, MAP, TABLAT);
         let image = vec![0; 4 * 320 * 200];
         let fresk = SpriteSheet::from_slice(FRESK).unwrap();
         let icones = SpriteSheet::from_slice(ICONES).unwrap();

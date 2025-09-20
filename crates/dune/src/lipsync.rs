@@ -1,7 +1,8 @@
 use std::io::Cursor;
 
 use bytes_ext::ReadBytesExt;
-use dune::{Framebuffer, SpriteSheet, draw_sprite};
+
+use crate::{Framebuffer, SpriteSheet, draw_sprite};
 
 #[derive(Debug)]
 pub struct Lipsync {

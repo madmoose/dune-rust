@@ -47,6 +47,7 @@
 		#app {
 			display: flex;
 			flex-direction: column;
+			justify-content: center;
 			gap: 1rem;
 		}
 
@@ -69,64 +70,6 @@
 			image-rendering: -webkit-crisp-edges;
 			image-rendering: pixelated;
 			aspect-ratio: 4 / 3;
-		}
-
-		#controls {
-			margin: auto;
-			width: 100%;
-			padding-top: 1rem;
-			display: flex;
-			gap: 1rem;
-		}
-
-		#controls {
-			display: flex;
-
-			>label {
-				width: 25%;
-			}
-
-			input {
-				text-align: right;
-
-			}
-
-			& input,
-			select {
-				box-sizing: border-box;
-				appearance: none;
-				width: 100%;
-				font: inherit;
-				border-radius: 0.375rem;
-				border: 1px solid #d1d5db;
-				padding: 0.375rem 0.75rem;
-			}
-
-			.select {
-				position: relative;
-
-				& select {
-					width: 100%;
-				}
-
-				& svg {
-					position: absolute;
-					pointer-events: none;
-					width: 1.25rem;
-					height: 1.25rem;
-					top: .5rem;
-					right: .5rem;
-				}
-			}
-		}
-
-		tr,
-		th {
-			vertical-align: top;
-		}
-
-		tr.highlighted {
-			background-color: #d1d5db;
 		}
 	</style>
 	<script type="importmap">
@@ -152,7 +95,18 @@
 			mounted() {
 				this.canvas = document.querySelector('canvas');
 				this.attack_renderer = new AttackRenderer(canvas);
+				this.randomize()
 			},
+			methods: {
+				randomize() {
+					let values = new Uint16Array(3);
+					crypto.getRandomValues(values);
+
+					this.attack_renderer.set_rand_bits(values[0]);
+					this.attack_renderer.set_rng_seed(values[1]);
+					this.attack_renderer.set_masked_rng_seed(values[2]);
+				}
+			}
 		}).mount('#app')
 	</script>
 </head>

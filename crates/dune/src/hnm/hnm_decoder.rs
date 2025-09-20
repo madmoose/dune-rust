@@ -64,12 +64,6 @@ impl<'a> HnmDecoder<'a> {
         loop {
             let block_type = r.read_be_u16()?;
 
-            println!(
-                "block_type: {}{}",
-                (block_type >> 8) as u8 as char,
-                block_type as u8 as char
-            );
-
             match block_type {
                 BLOCK_TYPE_SD => {
                     let block_size = r.read_le_u16()?;
@@ -86,8 +80,6 @@ impl<'a> HnmDecoder<'a> {
                 _ => {
                     r.seek_relative(-2)?;
                     let frame_header = FrameHeader::new(&mut r)?;
-
-                    println!("{frame_header:?}");
 
                     if frame_header.is_compressed() {
                         r.seek_relative(6)?;

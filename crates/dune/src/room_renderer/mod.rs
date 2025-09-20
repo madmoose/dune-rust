@@ -1,11 +1,19 @@
+#![allow(clippy::too_many_arguments)]
+
+mod galois_noise_generator;
+mod room;
+mod room_sheet;
+
 use std::{io::Cursor, mem::swap};
 
 use bytes_ext::ReadBytesExt;
-use dune::{Color, Framebuffer, IndexMap, Palette, Point, SpriteSheet, sprite_blitter};
+pub use room::Room;
+pub use room_sheet::RoomSheet;
 
 use crate::{
-    Room,
-    room::{Part, Polygon},
+    Color, Framebuffer, IndexMap, Palette, Point, SpriteSheet,
+    room_renderer::room::{Part, Polygon},
+    sprite_blitter,
 };
 
 pub struct RoomRenderer {

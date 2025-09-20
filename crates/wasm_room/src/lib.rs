@@ -2,8 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use dune::{Framebuffer, IndexMap, Palette, SpriteSheet};
-use room_renderer::{DrawOptions, Room, RoomSheet};
+use dune::{DrawOptions, Framebuffer, IndexMap, Palette, Room, RoomSheet, SpriteSheet};
 use serde::Deserialize;
 use wasm_bindgen::{Clamped, prelude::*};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData, console};
@@ -90,7 +89,7 @@ impl RoomRenderer {
 }
 
 struct RoomRendererInner {
-    room_renderer: room_renderer::RoomRenderer,
+    room_renderer: dune::RoomRenderer,
     room_sheet: Option<RoomSheet>,
     room_index: usize,
     canvas: HtmlCanvasElement,
@@ -100,7 +99,7 @@ struct RoomRendererInner {
 
 impl RoomRendererInner {
     pub fn new(canvas: HtmlCanvasElement) -> Rc<RefCell<RoomRendererInner>> {
-        let room_renderer = room_renderer::RoomRenderer::new();
+        let room_renderer = dune::RoomRenderer::new();
 
         let image = vec![0; 4 * 320 * 200];
         let index_map = Some(IndexMap::new());
@@ -238,7 +237,7 @@ impl RoomRendererInner {
     }
 }
 
-fn room_sheet_by_name(room_sheet: &str) -> Option<room_renderer::RoomSheet> {
+fn room_sheet_by_name(room_sheet: &str) -> Option<dune::RoomSheet> {
     let room_sheet_data = match room_sheet {
         "SIET" => ROOMS_SIET,
         "PALACE" => ROOMS_PALACE,
@@ -247,7 +246,7 @@ fn room_sheet_by_name(room_sheet: &str) -> Option<room_renderer::RoomSheet> {
         _ => ROOMS_PALACE,
     };
 
-    room_renderer::RoomSheet::new(room_sheet_data).ok()
+    dune::RoomSheet::new(room_sheet_data).ok()
 }
 
 fn sprite_sheet_by_name(sprite_sheet: &str) -> Option<SpriteSheet> {
