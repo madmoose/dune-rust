@@ -19,7 +19,11 @@ pub struct DataSegment {
     pub persons_in_room: u16,
     pub persons_talking_to: u16,
 
-    #[bin_read(offset = 0x002a)]
+    #[bin_read(offset = 0x0027)]
+    pub sietches_available: u8,
+
+    #[bin_read(offset = 0x0029)]
+    pub charisma: u8,
     pub game_phase: u8,
 
     #[bin_read(offset = 0x00cf)]
